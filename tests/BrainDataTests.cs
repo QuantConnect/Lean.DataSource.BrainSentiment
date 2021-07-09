@@ -16,19 +16,56 @@
 
 using System;
 using ProtoBuf;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ProtoBuf.Meta;
 using Newtonsoft.Json;
 using NUnit.Framework;
+using QuantConnect;
 using QuantConnect.Data;
 using QuantConnect.DataSource;
 
 namespace QuantConnect.DataLibrary.Tests
 {
     [TestFixture]
-    public class MyCustomDataTypeTests
+    public class BrainDataTests
     {
+        [Test]
+        public void Thing()
+        {
+            var dataFolder = new DirectoryInfo("/Data/alternative/brain/report_all");
+            var date = DateTime.ParseExact(dataFolder.GetDirectories().First().Name, "yyyyMMdd");
+
+            var tickers = dataFolder.GetDirectories().First().GetFiles();
+            var factory = new BrainCompanyFilingLanguageMetricsAll();
+
+            foreach (var file in tickers) 
+            {
+                var ticker = file.Name.Replace(".csv", "").ToUpper();
+                var lines = File.ReadAllLines(file.FullName).ToList();
+
+                var config = new SubscriptionDataConfig(
+                    typeof(BrainCompanyFilingLanguageMetricsAll),
+                    Symbol.Create(ticker, SecurityType.Base, Market.USA, baseDataType: typeof(BrainCompanyFilingLanguageMetricsAll)),
+                    Resolution.Daily,
+                    TimeZones.Utc,
+                    TimeZones.Utc,
+                    false,
+                    false,
+                    false,
+                    true,
+                    null
+                );
+
+                foreach (var line in lines)
+                {
+                    var a = factory.Reader(config, line, date, false);
+                    Console.WriteLine(a.ToString());
+                }
+            }
+        }
+        /*
         [Test]
         public void JsonRoundTrip()
         {
@@ -95,5 +132,6 @@ namespace QuantConnect.DataLibrary.Tests
                 SomeCustomProperty = "This is some market related information"
             };
         }
+        */
     }
 }

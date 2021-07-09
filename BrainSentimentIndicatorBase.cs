@@ -18,22 +18,31 @@ using System;
 using NodaTime;
 using ProtoBuf;
 using System.IO;
+using QuantConnect;
 using QuantConnect.Data;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace QuantConnect.DataSource
 {
     /// <summary>
-    /// Example custom data type
+    /// Brain sentiment on news
     /// </summary>
     [ProtoContract(SkipConstructor = true)]
-    public class MyCustomDataType : BaseData
+    public class BrainSentimentIndicatorBase<T> : BaseData
+        where T : BrainSentimentIndicatorBase<T>, new()
     {
-        /// <summary>
-        /// Some custom data property
-        /// </summary>
-        [ProtoMember(2000)]
-        public string SomeCustomProperty { get; set; }
+        public int TotalArticleMentions { get; set; }
+
+        public decimal SentimentalArticleMentions { get; set; }
+
+        public decimal Sentiment { get; set; }
+
+        public decimal? TotalBuzzVolume { get; set; }
+
+        public decimal? SentimentalBuzzVolume { get; set; }
+
+        protected virtual int LookbackDays { get; set; }
 
         /// <summary>
         /// Return the URL string source of the file. This will be converted to a stream
@@ -48,7 +57,10 @@ namespace QuantConnect.DataSource
                 Path.Combine(
                     Globals.DataFolder,
                     "alternative",
-                    "mycustomdatatype",
+                    "brain",
+                    "sentiment",
+                    $"{LookbackDays}",
+                    $"{date:yyyyMMdd}",
                     $"{config.Symbol.Value.ToLowerInvariant()}.csv"
                 ),
                 SubscriptionTransportMedium.LocalFile
@@ -67,28 +79,42 @@ namespace QuantConnect.DataSource
         {
             var csv = line.Split(',');
 
-            var parsedDate = Parse.DateTimeExact(csv[0], "yyyyMMdd");
-            return new MyCustomDataType
-            {
-                Symbol = config.Symbol,
-                SomeCustomProperty = csv[1],
-                Time = parsedDate,
-                EndTime = parsedDate + TimeSpan.FromDays(1)
-            };
+            var data = (BrainSentimentIndicatorBase<T>)((object)new T());
+
+            data.TotalArticleMentions = Parse.Int(csv[0]);
+            data.SentimentalArticleMentions = Parse.Int(csv[1]);
+            data.Sentiment = Parse.Decimal(csv[2]);
+
+            data.TotalBuzzVolume = !string.IsNullOrWhiteSpace(csv[3])
+                ? Parse.Decimal(csv[3])
+                : null;
+            data.SentimentalBuzzVolume = !string.IsNullOrWhiteSpace(csv[4])
+                ? Parse.Decimal(csv[4])
+                : null;
+
+            data.Symbol = config.Symbol;
+            data.EndTime = date.Date.AddHours(12);
+
+            return data;
         }
 
         /// <summary>
         /// Clones the data
         /// </summary>
         /// <returns>A clone of the object</returns>
-        public override BaseData Clone()
+        protected T CloneData()
         {
-            return new MyCustomDataType
+            return new T
             {
+                TotalArticleMentions = TotalArticleMentions,
+                SentimentalArticleMentions = SentimentalArticleMentions,
+                Sentiment = Sentiment,
+
+                TotalBuzzVolume = TotalBuzzVolume,
+                SentimentalBuzzVolume = SentimentalBuzzVolume,
+
                 Symbol = Symbol,
-                Time = Time,
-                EndTime = EndTime,
-                SomeCustomProperty = SomeCustomProperty,
+                EndTime = EndTime
             };
         }
 
@@ -116,7 +142,7 @@ namespace QuantConnect.DataSource
         /// </summary>
         public override string ToString()
         {
-            return $"{Symbol} - {SomeCustomProperty}";
+            return $"{Symbol} - Mentions: {TotalArticleMentions}, Sentiment: {Sentiment}";
         }
 
         /// <summary>
