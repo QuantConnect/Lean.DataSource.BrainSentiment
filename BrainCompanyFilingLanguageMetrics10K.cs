@@ -29,6 +29,11 @@ namespace QuantConnect.DataSource
     [ProtoContract(SkipConstructor = true)]
     public class BrainCompanyFilingLanguageMetrics10K : BrainCompanyFilingLanguageMetricsBase<BrainCompanyFilingLanguageMetrics10K>
     {
+        /// <summary>
+        /// Data source ID
+        /// </summary>
+        public static int DataSourceId { get; } = 2021;
+
         protected override string ReportType { get; set; } = "10k";
     }
 }

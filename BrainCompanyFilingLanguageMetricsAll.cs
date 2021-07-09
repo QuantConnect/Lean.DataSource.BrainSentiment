@@ -29,6 +29,11 @@ namespace QuantConnect.DataSource
     [ProtoContract(SkipConstructor = true)]
     public class BrainCompanyFilingLanguageMetricsAll : BrainCompanyFilingLanguageMetricsBase<BrainCompanyFilingLanguageMetricsAll>
     {
+        /// <summary>
+        /// Data source ID
+        /// </summary>
+        public static int DataSourceId { get; } = 2022;
+
         protected override string ReportType { get; set; } = "all";
     }
 }

@@ -29,6 +29,11 @@ namespace QuantConnect.DataSource
     [ProtoContract(SkipConstructor = true)]
     public class BrainStockRanking10Day : BrainStockRankingBase<BrainStockRanking10Day>
     {
+        /// <summary>
+        /// Data source ID
+        /// </summary>
+        public static int DataSourceId { get; } = 2028;
+
         protected override int LookbackDays { get; set; } = 10;
     }
 }

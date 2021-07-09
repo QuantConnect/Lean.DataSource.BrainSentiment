@@ -29,6 +29,11 @@ namespace QuantConnect.DataSource
     [ProtoContract(SkipConstructor = true)]
     public class BrainSentimentIndicator30Day : BrainSentimentIndicatorBase<BrainSentimentIndicator30Day>
     {
+        /// <summary>
+        /// Data source ID
+        /// </summary>
+        public static int DataSourceId { get; } = 2024;
+
         protected override int LookbackDays { get; set; } = 30;
     }
 }
