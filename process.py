@@ -4,7 +4,7 @@ import pandas as pd
 import sqlalchemy
 
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from botocore.exceptions import ClientError
 
 # Setup pythonnet to use .NET 5.0
@@ -54,10 +54,10 @@ SENTIMENT_CATEGORY = SENTIMENT_KEY_PREFIX # 2016-08-01
 RANKINGS_CATEGORY = RANKINGS_KEY_PREFIX # 2010-01-01
 
 FILE_PREFIXES = [
-    ('differences_10k', None, REPORT_DIFF_10K_CATEGORY),
-    ('differences_all', None, REPORT_DIFF_ALL_CATEGORY),
-    ('metrics_10k', None, REPORT_10K_CATEGORY),
-    ('metrics_all', None, REPORT_ALL_CATEGORY),
+    #('differences_10k', None, REPORT_DIFF_10K_CATEGORY),
+    #('differences_all', None, REPORT_DIFF_ALL_CATEGORY),
+    #('metrics_10k', None, REPORT_10K_CATEGORY),
+    #('metrics_all', None, REPORT_ALL_CATEGORY),
 
     ('sentimentDays7', 7, SENTIMENT_CATEGORY),
     ('sentimentDays30', 30, SENTIMENT_CATEGORY),
@@ -110,10 +110,13 @@ def download():
 
     # -- Get file names until current date
     if PROCESS_ALL:
-        date_end = datetime.now().strftime(DATE_FORMAT)
-        dates = get_business_dates(PROCESS_DATE_STR, date_end)
+        date_start = PROCESS_DATE
+        date_end = datetime.now()
     else:
-        dates = [PROCESS_DATE]
+        date_start = (PROCESS_DATE - timedelta(days=PROCESS_DATE.day - 1))
+        date_end = pd.date_range(start=date_start, periods=1, freq='M')[0].to_pydatetime()
+
+    dates = get_business_dates(date_start, date_end)
 
     file_names = []
     for date in dates:
@@ -320,6 +323,7 @@ class BrainProcessor:
 
         for category, files in category_files.items():
             for file_path, lookback_days, date in files:
+                print(f'Parsing {file_path}')
                 df = self.parse_raw(file_path, category, date, lookback_days)
                 category_df_collection[category].append(df)
 
@@ -327,14 +331,16 @@ class BrainProcessor:
             if len(dfs) == 0:
                 print(f'No DataFrame created for category: {category}')
                 continue
-                    
+
             df = pd.concat(dfs)
             if df.empty:
                 print(f'No data in DataFrame for category: {category}')
                 continue
 
+            df = df.sort_index(level=[1, 0])
+
             if category in [REPORT_10K_CATEGORY, REPORT_DIFF_10K_CATEGORY, REPORT_ALL_CATEGORY, REPORT_DIFF_ALL_CATEGORY]:
-                df = df.sort_index(level=0).drop_duplicates()
+                df = df.drop_duplicates()
             
             category_dfs[category] = df
 
@@ -351,26 +357,34 @@ class BrainProcessor:
     def write(self, categories_data):
         for category, df in categories_data.items():
             if df is None or df.empty:
+                print(f'Skipping category: {category}')
                 continue
 
-            for (date, ticker), row in df.iterrows():
-                if not ticker or ticker.isspace():
-                    continue
+            print(f'Begin writing data for category: {category}')
 
-                output_path = OUTPUT_DATA_PATH / OUTPUT_DIRECTORY_NAMES[category]
-                drop_columns = []
+            has_lookback = 'lookback_days' in df
+            groupby_columns = ['ticker']
+            if has_lookback:
+                groupby_columns.append('lookback_days')
 
-                if 'lookback_days' in row:
-                    output_path = output_path / row['lookback_days']
-                    drop_columns.append('lookback_days')
+            for index, df_ticker in df.groupby(groupby_columns):
+                ticker = index[0]
+                directory_name = OUTPUT_DIRECTORY_NAMES[category]
+                output_path = OUTPUT_DATA_PATH / directory_name
+                lookback_days = None
+
+                if has_lookback:
+                    lookback_days = index[1]
+                    output_path = output_path / lookback_days
+                    df_ticker = df_ticker.drop(columns=['lookback_days'])
                     
-                output_path = output_path / date.strftime(OUTPUT_DATE_FORMAT)
+                output_path = output_path / PROCESS_DATE.strftime('%Y%m')
                 output_path.mkdir(parents=True, exist_ok=True)
                 output_path = output_path / f'{ticker.lower()}.csv'
 
-                row = row.to_frame().T
-                row = row.drop(columns=drop_columns)
-                row.to_csv(output_path, header=False, index=False, date_format=OUTPUT_DATE_FORMAT)
+                df_ticker = df_ticker.reset_index(level=1, drop=True)
+                df_ticker.to_csv(output_path, header=False, index=True, date_format=OUTPUT_DATE_FORMAT)
+                print(f'Finished writing {category}/{directory_name}/{lookback_days} data :: {ticker}')
 
     def create_empty_df(self, columns):
         return pd.DataFrame(columns=columns, index=[['date'], ['ticker']], dtype=object).dropna()

@@ -60,7 +60,7 @@ namespace QuantConnect.DataSource
                     "brain",
                     "sentiment",
                     $"{LookbackDays}",
-                    $"{date:yyyyMMdd}",
+                    $"{date:yyyyMM}",
                     $"{config.Symbol.Value.ToLowerInvariant()}.csv"
                 ),
                 SubscriptionTransportMedium.LocalFile
@@ -77,7 +77,9 @@ namespace QuantConnect.DataSource
         /// <returns>New instance</returns>
         public override BaseData Reader(SubscriptionDataConfig config, string line, DateTime date, bool isLiveMode)
         {
-            var csv = line.Split(',');
+            var csv = line.Split(',').ToList();
+            var dataDate = csv[0];
+            csv = csv.Skip(1).ToList();
 
             var data = (BrainSentimentIndicatorBase<T>)((object)new T());
 
@@ -93,7 +95,7 @@ namespace QuantConnect.DataSource
                 : null;
 
             data.Symbol = config.Symbol;
-            data.EndTime = date.Date.AddHours(12);
+            data.EndTime = QuantConnect.Parse.DateTimeExact(dataDate, "yyyyMMdd").AddHours(12);
 
             return data;
         }

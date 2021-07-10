@@ -67,7 +67,7 @@ namespace QuantConnect.DataSource
                     "alternative",
                     "brain",
                     $"report_{ReportType.ToLowerInvariant()}",
-                    $"{date:yyyyMMdd}",
+                    $"{date:yyyyMM}",
                     $"{config.Symbol.Value.ToLowerInvariant()}.csv"
                 ),
                 SubscriptionTransportMedium.LocalFile
@@ -89,7 +89,9 @@ namespace QuantConnect.DataSource
                 return null;
             }
 
-            var csv = line.Split(',');
+            var csv = line.Split(',').ToList();
+            var dataDate = csv[0];
+            csv = csv.Skip(1).ToList();
 
             var baseInfo = csv.Take(2).ToList();
             var diffBaseInfo = csv.Skip(36).Take(3).ToList();
@@ -126,7 +128,7 @@ namespace QuantConnect.DataSource
             data.ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations = BrainCompanyFilingLanguageMetrics.Parse(mdMetrics, mdSimilarity);
 
             data.Symbol = config.Symbol;
-            data.EndTime = date.Date.AddHours(12);
+            data.EndTime = QuantConnect.Parse.DateTimeExact(dataDate, "yyyyMMdd").AddHours(12);
 
             return data;
         }

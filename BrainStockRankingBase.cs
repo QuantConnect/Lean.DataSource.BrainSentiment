@@ -51,7 +51,7 @@ namespace QuantConnect.DataSource
                     "brain",
                     "rankings",
                     $"{LookbackDays}",
-                    $"{date:yyyyMMdd}",
+                    $"{date:yyyyMM}",
                     $"{config.Symbol.Value.ToLowerInvariant()}.csv"
                 ),
                 SubscriptionTransportMedium.LocalFile
@@ -69,10 +69,12 @@ namespace QuantConnect.DataSource
         public override BaseData Reader(SubscriptionDataConfig config, string line, DateTime date, bool isLiveMode)
         {
             var data = (BrainStockRankingBase<T>)((object)new T());
+            var csv = line.Split(',');
+            var dataDate = csv[0];
 
-            data.Rank = Parse.Decimal(line);
+            data.Rank = Parse.Decimal(csv[1]);
             data.Symbol = config.Symbol;
-            data.EndTime = date.Date.AddHours(12);
+            data.EndTime = QuantConnect.Parse.DateTimeExact(dataDate, "yyyyMMdd").AddHours(12);
 
             return data;
         }
