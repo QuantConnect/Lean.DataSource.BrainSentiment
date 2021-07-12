@@ -383,7 +383,7 @@ class BrainProcessor:
                 output_path = output_path / f'{ticker.lower()}.csv'
 
                 df_ticker = df_ticker.reset_index(level=1, drop=True)
-                df_ticker.to_csv(output_path, header=False, index=True, date_format=OUTPUT_DATE_FORMAT)
+                df_ticker.to_csv(output_path, header=False, index=True, date_format=OUTPUT_DATE_FORMAT, float_format='%f')
                 print(f'Finished writing {category}/{directory_name}/{lookback_days} data :: {ticker}')
 
     def create_empty_df(self, columns):
