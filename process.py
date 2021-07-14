@@ -54,10 +54,10 @@ SENTIMENT_CATEGORY = SENTIMENT_KEY_PREFIX # 2016-08-01
 RANKINGS_CATEGORY = RANKINGS_KEY_PREFIX # 2010-01-01
 
 FILE_PREFIXES = [
-    #('differences_10k', None, REPORT_DIFF_10K_CATEGORY),
-    #('differences_all', None, REPORT_DIFF_ALL_CATEGORY),
-    #('metrics_10k', None, REPORT_10K_CATEGORY),
-    #('metrics_all', None, REPORT_ALL_CATEGORY),
+    ('differences_10k', None, REPORT_DIFF_10K_CATEGORY),
+    ('differences_all', None, REPORT_DIFF_ALL_CATEGORY),
+    ('metrics_10k', None, REPORT_10K_CATEGORY),
+    ('metrics_all', None, REPORT_ALL_CATEGORY),
 
     ('sentimentDays7', 7, SENTIMENT_CATEGORY),
     ('sentimentDays30', 30, SENTIMENT_CATEGORY),
@@ -67,6 +67,13 @@ FILE_PREFIXES = [
     ('mlAlpha5Days', 5, RANKINGS_CATEGORY),
     ('mlAlpha10Days', 10, RANKINGS_CATEGORY),
     ('mlAlpha21Days', 21, RANKINGS_CATEGORY)
+]
+
+REPORT_CATEGORIES = [
+    REPORT_10K_CATEGORY,
+    REPORT_DIFF_10K_CATEGORY,
+    REPORT_ALL_CATEGORY,
+    REPORT_DIFF_ALL_CATEGORY
 ]
 
 CATEGORY_KEY_PREFIXES = {
@@ -84,76 +91,6 @@ OUTPUT_DIRECTORY_NAMES = {
     REPORT_10K_CATEGORY: 'report_10k',
     REPORT_ALL_CATEGORY: 'report_all',
 }
-
-
-def get_business_dates(date_start, date_end, date_format='dt'):
-    """ Get business dates """
-    dates = pd.date_range(date_start, date_end, freq='B')
-    dts = [date.to_pydatetime() for date in dates]
-    if date_format == 'dt':
-        return dts
-    else:
-        return [dt.strftime(DATE_FORMAT) for dt in dts]
-
-
-def download_file_s3(local_dir, file_name, s3_source, s3_bucket_name_source, s3_folder_source):
-    saved_paths = []
-    remote_key = '{}/{}'.format(s3_folder_source, file_name)
-    local_path = str(local_dir / file_name)
-    s3_source.Bucket(s3_bucket_name_source).download_file(remote_key, local_path)
-    saved_paths.append(local_path)
-    print('[DOWNLOAD] File = %s saved to local dir = %s' % (file_name, str(local_dir)))
-    return saved_paths
-
-def download():
-    LOCAL_FOLDER.mkdir(parents=True, exist_ok=True)
-
-    # -- Get file names until current date
-    if PROCESS_ALL:
-        date_start = PROCESS_DATE
-        date_end = datetime.now()
-    else:
-        date_start = (PROCESS_DATE - timedelta(days=PROCESS_DATE.day - 1))
-        date_end = pd.date_range(start=date_start, periods=1, freq='M')[0].to_pydatetime()
-
-    dates = get_business_dates(date_start, date_end)
-
-    file_names = []
-    for date in dates:
-        for file_prefix, lookback_days, category in FILE_PREFIXES:
-            file_name = '%s_%s.csv' % (file_prefix, date.strftime(OUTPUT_DATE_FORMAT))
-            file_path = LOCAL_FOLDER / file_name
-            file_names.append((file_path, lookback_days, category, date))
-
-    n_files = len(file_names)
-
-    # -- Connect to S3
-    session = boto3.Session(
-            aws_access_key_id=S3_USER_KEY_ID,
-            aws_secret_access_key=S3_USER_KEY_ACCESS,
-        )
-    s3 = session.resource('s3')
-
-    downloaded_files = []
-
-    # -- Download files
-    for file_idx, (file_path, lookback_days, category, date) in enumerate(file_names):
-        file_name = file_path.name
-        key_prefix = CATEGORY_KEY_PREFIXES[category]
-
-        try:
-            if not file_path.exists():
-                download_file_s3(LOCAL_FOLDER, file_name, s3, S3_BUCKET_NAME, key_prefix)
-                print('[DOWNLOAD] Done = %d/%d' % (file_idx + 1, n_files))
-            else:
-                print(f'File already exists: {file_name}')
-
-            downloaded_files.append((file_path, lookback_days, category, date))
-        except ClientError as e:
-            print(f'{str(e)} - Failed to download {file_name} - skipping')
-            continue
-
-    return downloaded_files
 
 
 class BrainProcessor:
@@ -247,11 +184,13 @@ class BrainProcessor:
     def filter_files_by_category(self, category):
         return [(file_path, lookback_days, date) for (file_path, lookback_days, cat, date) in self.files if cat == category]
 
-    def figi_to_mapped_ticker(self, figi, trading_date):
-        ticker = self.figi_to_unmapped_ticker(figi)
-        if ticker is None:
-            return None
+    def figi_to_mapped_ticker(self, ticker, figi, trading_date):
+        figi_ticker = self.figi_to_unmapped_ticker(figi)
+        ticker = ticker if figi_ticker is None else figi_ticker
 
+        return self.map_ticker(ticker, trading_date)
+
+    def map_ticker(self, ticker, trading_date):
         map_file_resolver = self.map_file_provider.Get(Market.USA)
         map_file = map_file_resolver.ResolveMapFile(ticker, datetime.now())
         
@@ -307,7 +246,7 @@ class BrainProcessor:
 
         df = pd.read_csv(file)
         df['date'] = date
-        df['ticker'] = df['COMPOSITE_FIGI'].apply(lambda figi: self.figi_to_mapped_ticker(figi, date))
+        df['ticker'] = df[['ticker', 'COMPOSITE_FIGI']].apply(lambda sec_def: self.figi_to_mapped_ticker(sec_def['ticker'], sec_def['COMPOSITE_FIGI'], date), axis=1)
         df = df[~df['ticker'].isnull()]
         df = df.set_index('date', append=False).set_index('ticker', append=True)
 
@@ -337,12 +276,7 @@ class BrainProcessor:
                 print(f'No data in DataFrame for category: {category}')
                 continue
 
-            df = df.sort_index(level=[1, 0])
-
-            if category in [REPORT_10K_CATEGORY, REPORT_DIFF_10K_CATEGORY, REPORT_ALL_CATEGORY, REPORT_DIFF_ALL_CATEGORY]:
-                df = df.drop_duplicates()
-            
-            category_dfs[category] = df
+            category_dfs[category] = df.sort_index(level=[1, 0])
 
         df_report_10k_merged = self.merge_reports(category_dfs[REPORT_10K_CATEGORY], category_dfs[REPORT_DIFF_10K_CATEGORY])
         df_report_all_merged = self.merge_reports(category_dfs[REPORT_ALL_CATEGORY], category_dfs[REPORT_DIFF_ALL_CATEGORY])
@@ -351,6 +285,11 @@ class BrainProcessor:
         category_dfs[REPORT_ALL_CATEGORY] = df_report_all_merged
         del category_dfs[REPORT_DIFF_10K_CATEGORY]
         del category_dfs[REPORT_DIFF_ALL_CATEGORY]
+
+        month_start = PROCESS_DATE - timedelta(days=PROCESS_DATE.day - 1)
+        category_dfs = {
+            k: df.loc[month_start:] for k, df in category_dfs.items()
+        }
 
         self.write(category_dfs)
 
@@ -390,15 +329,99 @@ class BrainProcessor:
         return pd.DataFrame(columns=columns, index=[['date'], ['ticker']], dtype=object).dropna()
 
     def merge_reports(self, df_report, df_report_diff):
-        if df_report is None and df_report_diff is None:
-            return None
+        if df_report is None:
+            df_report = self.create_empty_df(self.category_parsing_columns[REPORT_ALL_CATEGORY])
+        if df_report_diff is None:
+            df_report_diff = self.create_empty_df(self.category_parsing_columns[REPORT_DIFF_ALL_CATEGORY])
 
         # These columns appear in both data sets, and won't play nicely if we
         # try to join both DataFrames with the same columns
         shared_columns = ['LAST_REPORT_DATE', 'LAST_REPORT_CATEGORY']
         df_report_diff = df_report_diff.drop(columns=shared_columns)
 
-        return df_report.join(df_report_diff)
+        return df_report.join(df_report_diff)\
+            .reset_index(level=1)\
+            .drop_duplicates()\
+            .set_index('ticker', append=True)
+
+
+def get_business_dates(date_start, date_end, date_format='dt'):
+    """ Get business dates """
+    dates = pd.date_range(date_start, date_end, freq='B')
+    dts = [date.to_pydatetime() for date in dates]
+    if date_format == 'dt':
+        return dts
+    else:
+        return [dt.strftime(DATE_FORMAT) for dt in dts]
+
+def download_file_s3(s3, file_prefix, category, date):
+    file_name = f'{file_prefix}_{date.strftime(OUTPUT_DATE_FORMAT)}.csv'
+    file_path = LOCAL_FOLDER / file_name
+    
+    if file_path.exists():
+        print(f'File already exists: {file_name}')
+        return file_path
+
+    key_prefix = CATEGORY_KEY_PREFIXES[category]
+    remote_key = f'{key_prefix}/{file_name}'
+
+    try:
+        s3.Bucket(S3_BUCKET_NAME).download_file(remote_key, str(file_path))
+    except ClientError as e:
+        print(f'{str(e)} - Failed to download {file_name}')
+        return None
+
+    print(f'Finished downloading: {file_name}')
+    return file_path
+
+def download():
+    LOCAL_FOLDER.mkdir(parents=True, exist_ok=True)
+
+    # -- Get file names until current date
+    if PROCESS_ALL:
+        date_start = PROCESS_DATE
+        date_end = datetime.now()
+    else:
+        date_start = (PROCESS_DATE - timedelta(days=PROCESS_DATE.day - 1))
+        date_end = pd.date_range(start=date_start, periods=1, freq='M')[0].to_pydatetime()
+
+    dates = get_business_dates(date_start, date_end)
+
+    file_names = [(*prefix_data, date) for date in dates for prefix_data in FILE_PREFIXES]
+    n_files = len(file_names)
+
+    # -- Connect to S3
+    session = boto3.Session(
+            aws_access_key_id=S3_USER_KEY_ID,
+            aws_secret_access_key=S3_USER_KEY_ACCESS,
+        )
+    s3 = session.resource('s3')
+
+    downloaded_files = []
+
+    # -- Download files
+    for file_key, lookback_days, category, date in file_names:
+        if date == date_start and category in REPORT_CATEGORIES:
+            previous_file_date = date_start
+            oldest_file_date = previous_file_date - timedelta(days=14)
+
+            while previous_file_date > oldest_file_date:
+                previous_file_date = previous_file_date - timedelta(days=1)
+                if previous_file_date.weekday() >= 5:
+                    continue
+
+                file_path = download_file_s3(s3, file_key, category, previous_file_date)
+                if file_path is not None:
+                    downloaded_files.append((file_path, lookback_days, category, previous_file_date))
+                    break
+
+            continue
+
+        file_path = download_file_s3(s3, file_key, category, date)
+        if file_path is not None:
+            downloaded_files.append((file_path, lookback_days, category, date))
+
+    return downloaded_files
 
 
 def main():
