@@ -191,6 +191,9 @@ class BrainProcessor:
         return self.map_ticker(ticker, trading_date)
 
     def map_ticker(self, ticker, trading_date):
+        if ticker is None:
+            return None
+
         map_file_resolver = self.map_file_provider.Get(Market.USA)
         map_file = map_file_resolver.ResolveMapFile(ticker, datetime.now())
         
@@ -237,16 +240,26 @@ class BrainProcessor:
         return any(self.figi_map)
 
     def parse_raw(self, file, category, date, lookback_days=None):
-        columns = list(self.category_parsing_columns[category])
+        columns = list(self.category_parsing_columns[category]) + ['COMPOSITE_FIGI']
         if lookback_days is not None:
             columns.append('lookback_days')
 
         if not file.exists():
             return self.create_empty_df(columns)
 
+        sec_def_columns = ['COMPOSITE_FIGI']
+        ticker_column = None
+
         df = pd.read_csv(file)
+        if 'TICKER' in df:
+            ticker_column = 'TICKER'
+            sec_def_columns.insert(0, 'TICKER')
+        elif 'PRIMARY_EXCHANGE_TICKER' in df:
+            ticker_column = 'PRIMARY_EXCHANGE_TICKER'
+            sec_def_columns.insert(0, 'PRIMARY_EXCHANGE_TICKER')
+
         df['date'] = date
-        df['ticker'] = df[['ticker', 'COMPOSITE_FIGI']].apply(lambda sec_def: self.figi_to_mapped_ticker(sec_def['ticker'], sec_def['COMPOSITE_FIGI'], date), axis=1)
+        df['ticker'] = df[sec_def_columns].apply(lambda sec_def: self.figi_to_mapped_ticker(sec_def[ticker_column] if ticker_column is not None else None, sec_def['COMPOSITE_FIGI'], date), axis=1)
         df = df[~df['ticker'].isnull()]
         df = df.set_index('date', append=False).set_index('ticker', append=True)
 
@@ -288,7 +301,7 @@ class BrainProcessor:
 
         month_start = PROCESS_DATE - timedelta(days=PROCESS_DATE.day - 1)
         category_dfs = {
-            k: df.loc[month_start:] for k, df in category_dfs.items()
+            k: df.loc[df.index.get_level_values('date') >= month_start].drop(columns=['COMPOSITE_FIGI']) for k, df in category_dfs.items() if df is not None and not df.empty
         }
 
         self.write(category_dfs)
@@ -307,7 +320,7 @@ class BrainProcessor:
                 groupby_columns.append('lookback_days')
 
             for index, df_ticker in df.groupby(groupby_columns):
-                ticker = index[0]
+                ticker = index[0] if has_lookback else index
                 directory_name = OUTPUT_DIRECTORY_NAMES[category]
                 output_path = OUTPUT_DATA_PATH / directory_name
                 lookback_days = None
@@ -330,20 +343,20 @@ class BrainProcessor:
 
     def merge_reports(self, df_report, df_report_diff):
         if df_report is None:
-            df_report = self.create_empty_df(self.category_parsing_columns[REPORT_ALL_CATEGORY])
+            df_report = self.create_empty_df(self.category_parsing_columns[REPORT_ALL_CATEGORY] + ['COMPOSITE_FIGI'])
         if df_report_diff is None:
-            df_report_diff = self.create_empty_df(self.category_parsing_columns[REPORT_DIFF_ALL_CATEGORY])
+            df_report_diff = self.create_empty_df(self.category_parsing_columns[REPORT_DIFF_ALL_CATEGORY] + ['COMPOSITE_FIGI'])
 
+        df_report = df_report.set_index('COMPOSITE_FIGI', append=True)
+        df_report_diff = df_report_diff.set_index('COMPOSITE_FIGI', append=True)
+        
         # These columns appear in both data sets, and won't play nicely if we
         # try to join both DataFrames with the same columns
-        shared_columns = ['LAST_REPORT_DATE', 'LAST_REPORT_CATEGORY']
-        df_report_diff = df_report_diff.drop(columns=shared_columns)
+        df_report_diff = df_report_diff.drop(columns=['LAST_REPORT_DATE', 'LAST_REPORT_CATEGORY'])
 
         return df_report.join(df_report_diff)\
-            .reset_index(level=1)\
-            .drop_duplicates()\
-            .set_index('ticker', append=True)
-
+            .reset_index(level=2)\
+            .drop_duplicates()
 
 def get_business_dates(date_start, date_end, date_format='dt'):
     """ Get business dates """
