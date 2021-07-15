@@ -99,6 +99,7 @@ class BrainProcessor:
         self.figi_map = None
         self.map_file_provider = LocalZipMapFileProvider()
         self.map_file_provider.Initialize(DefaultDataProvider())
+        self.map_file_resolver = self.map_file_provider.Get(Market.USA)
 
         self.category_parsing_columns = {
             RANKINGS_CATEGORY: ['ML_ALPHA'],
@@ -185,8 +186,9 @@ class BrainProcessor:
         return [(file_path, lookback_days, date) for (file_path, lookback_days, cat, date) in self.files if cat == category]
 
     def figi_to_mapped_ticker(self, ticker, figi, trading_date):
-        figi_ticker = self.figi_to_unmapped_ticker(figi)
-        ticker = ticker if figi_ticker is None else figi_ticker
+        sid = self.figi_to_sid(figi)
+        if sid is not None:
+            return self.map_sid(sid, trading_date)
 
         return self.map_ticker(ticker, trading_date)
 
@@ -194,12 +196,17 @@ class BrainProcessor:
         if ticker is None:
             return None
 
-        map_file_resolver = self.map_file_provider.Get(Market.USA)
-        map_file = map_file_resolver.ResolveMapFile(ticker, datetime.now())
-        
+        map_file = self.map_file_resolver.ResolveMapFile(ticker, datetime.now())
         return map_file.GetMappedSymbol(trading_date, None)
 
-    def figi_to_unmapped_ticker(self, figi):
+    def map_sid(self, sid, trading_date):
+        if sid is None:
+            return None
+
+        map_file = self.map_file_resolver.ResolveMapFile(sid.Symbol, sid.Date)
+        return map_file.GetMappedSymbol(trading_date, None)
+
+    def figi_to_sid(self, figi):
         if not self.has_db_connection:
             return None
 
@@ -217,7 +224,7 @@ class BrainProcessor:
         self.figi_map = {}
 
         db_connection = sqlalchemy.create_engine(self.db_connection_info)
-        df = pd.read_sql(f'SELECT figi, ticker FROM {self.db_security_table} ORDER BY id DESC', con=db_connection)
+        df = pd.read_sql(f'SELECT figi, sid, ticker FROM {self.db_security_table} ORDER BY id DESC', con=db_connection)
 
         if df.empty:
             print('Database contains no FIGI/ticker entries')
@@ -227,15 +234,18 @@ class BrainProcessor:
 
         for _, secdef in df.iterrows():
             figi = secdef['figi']
-            ticker = secdef['ticker']
+            sid = secdef['sid']
 
             if not figi or figi.isspace():
                 continue
 
-            if not ticker or ticker.isspace():
+            if not sid or sid.isspace():
                 continue
-
-            self.figi_map[figi] = ticker
+                
+            try:
+                self.figi_map[figi] = SecurityIdentifier.Parse(sid)
+            except:
+                print(f'Failed to parse SID: {sid} for Security: {figi}')
 
         return any(self.figi_map)
 
