@@ -17,6 +17,7 @@
 using System;
 using ProtoBuf;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using ProtoBuf.Meta;
@@ -35,7 +36,7 @@ namespace QuantConnect.DataLibrary.Tests
         public void Thing()
         {
             var dataFolder = new DirectoryInfo("/Data/alternative/brain/report_all");
-            var date = DateTime.ParseExact(dataFolder.GetDirectories().First().Name, "yyyyMMdd");
+            var date = DateTime.ParseExact(dataFolder.GetDirectories().First().Name, "yyyyMMdd", CultureInfo.InvariantCulture);
 
             var tickers = dataFolder.GetDirectories().First().GetFiles();
             var factory = new BrainCompanyFilingLanguageMetricsAll();
