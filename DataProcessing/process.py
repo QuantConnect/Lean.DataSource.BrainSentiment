@@ -1,32 +1,12 @@
 import os
 import boto3
-import pandas as pd
 import sqlalchemy
 
 from pathlib import Path
-from datetime import datetime, timedelta
 from botocore.exceptions import ClientError
 
-# Setup pythonnet to use .NET 5.0
-# Will add support for pythonnet in the future so that this isn't required.
-
-import clr_loader
-import pythonnet
-
-pythonnet.set_runtime(clr_loader.get_coreclr(os.path.join(os.environ['RUNTIME_CONFIG_DIRECTORY'], "QuantConnect.Lean.Launcher.runtimeconfig.json")))
-
-from clr import AddReference
-
-AddReference('System')
-AddReference('QuantConnect.Common')
-AddReference('QuantConnect.Lean.Engine')
-# Required, otherwise this crashes for some reason
-AddReference('Fasterflect')
-
-from System import *
-from QuantConnect import *
-from QuantConnect.Data.Auxiliary import LocalZipMapFileProvider
-from QuantConnect.Lean.Engine.DataFeeds import DefaultDataProvider
+# CLRImports is required to handle Lean C# objects
+from CLRImports import *
 
 S3_USER_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
 S3_USER_KEY_ACCESS = os.environ['AWS_SECRET_ACCESS_KEY']
