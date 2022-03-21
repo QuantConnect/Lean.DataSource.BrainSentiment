@@ -24,34 +24,59 @@ using QuantConnect.Data;
 namespace QuantConnect.DataSource
 {
     /// <summary>
-    /// Universe Selection helper class for Brain ML Stock Ranking dataset
+    /// Universe Selection helper class for Brain Sentiment dataset
     /// </summary>
-    public class BrainStockRankingUniverse : BaseData
+    public class BrainSentimentIndicatorUniverse : BaseData
     {
         /// <summary>
-        /// Rank prediction score in 2 days
+        /// Total Article Mentions in 7 days
         /// </summary>
-        public decimal Rank2Days { get; set; }
+        public int TotalArticleMentions7Days { get; set; }
 
         /// <summary>
-        /// Rank prediction score in 3 days
+        /// Sentimental Article Mentions in 7 days
         /// </summary>
-        public decimal Rank3Days { get; set; }
+        public decimal SentimentalArticleMentions7Days { get; set; }
 
         /// <summary>
-        /// Rank prediction score in 5 days
+        /// Setiment Score in 7 days
         /// </summary>
-        public decimal Rank5Days { get; set; }
+        public decimal Sentiment7Days { get; set; }
 
         /// <summary>
-        /// Rank prediction score in 10 days
+        /// Total Buzz Volume in 7 days
         /// </summary>
-        public decimal Rank10Days { get; set; }
+        public decimal? TotalBuzzVolume7Days { get; set; }
 
         /// <summary>
-        /// Rank prediction score in 21 days
+        /// Sentimental Buzz Volume in 7 days
         /// </summary>
-        public decimal Rank21Days { get; set; }
+        public decimal? SentimentalBuzzVolume7Days { get; set; }
+
+        /// <summary>
+        /// Total Article Mentions in 30 days
+        /// </summary>
+        public int TotalArticleMentions30Days { get; set; }
+
+        /// <summary>
+        /// Sentimental Article Mentions in 30 days
+        /// </summary>
+        public decimal SentimentalArticleMentions30Days { get; set; }
+
+        /// <summary>
+        /// Setiment Score in 30 days
+        /// </summary>
+        public decimal Sentiment30Days { get; set; }
+
+        /// <summary>
+        /// Total Buzz Volume in 30 days
+        /// </summary>
+        public decimal? TotalBuzzVolume30Days { get; set; }
+
+        /// <summary>
+        /// Sentimental Buzz Volume in 30 days
+        /// </summary>
+        public decimal? SentimentalBuzzVolume30Days { get; set; }
 
         /// <summary>
         /// Time passed between the date of the data and the time the data became available to us
@@ -77,7 +102,7 @@ namespace QuantConnect.DataSource
                     Globals.DataFolder,
                     "alternative",
                     "brain",
-                    "rankings",
+                    "sentiment",
                     "universe",
                     $"{date:yyyyMMdd}.csv"
                 ),
@@ -96,19 +121,33 @@ namespace QuantConnect.DataSource
         public override BaseData Reader(SubscriptionDataConfig config, string line, DateTime date, bool isLiveMode)
         {
             var csv = line.Split(',');
-            var rank2Days = decimal.Parse(csv[2], NumberStyles.Any, CultureInfo.InvariantCulture);
+            var sentiment7Days = decimal.Parse(csv[4], NumberStyles.Any, CultureInfo.InvariantCulture);
 
-            return new BrainStockRankingUniverse
+            return new BrainSentimentIndicatorUniverse
             {
-                Rank2Days = rank2Days,
-                Rank3Days = decimal.Parse(csv[3], NumberStyles.Any, CultureInfo.InvariantCulture),
-                Rank5Days = decimal.Parse(csv[4], NumberStyles.Any, CultureInfo.InvariantCulture),
-                Rank10Days = decimal.Parse(csv[5], NumberStyles.Any, CultureInfo.InvariantCulture),
-                Rank21Days = decimal.Parse(csv[5], NumberStyles.Any, CultureInfo.InvariantCulture),
+                TotalArticleMentions7Days = int.Parse(csv[2]),
+                SentimentalArticleMentions7Days = decimal.Parse(csv[3], NumberStyles.Any, CultureInfo.InvariantCulture),
+                Sentiment7Days = sentiment7Days,
+                TotalBuzzVolume7Days = !string.IsNullOrWhiteSpace(csv[5])
+                    ? decimal.Parse(csv[5], NumberStyles.Any, CultureInfo.InvariantCulture)
+                    : null,
+                SentimentalBuzzVolume7Days = !string.IsNullOrWhiteSpace(csv[6])
+                    ? decimal.Parse(csv[6], NumberStyles.Any, CultureInfo.InvariantCulture)
+                    : null,
+
+                TotalArticleMentions30Days = int.Parse(csv[7]),
+                SentimentalArticleMentions30Days = decimal.Parse(csv[8], NumberStyles.Any, CultureInfo.InvariantCulture),
+                Sentiment30Days = decimal.Parse(csv[9], NumberStyles.Any, CultureInfo.InvariantCulture),
+                TotalBuzzVolume30Days = !string.IsNullOrWhiteSpace(csv[10])
+                    ? decimal.Parse(csv[10], NumberStyles.Any, CultureInfo.InvariantCulture)
+                    : null,
+                SentimentalBuzzVolume30Days = !string.IsNullOrWhiteSpace(csv[11])
+                    ? decimal.Parse(csv[11], NumberStyles.Any, CultureInfo.InvariantCulture)
+                    : null,
 
                 Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]),
                 Time = date - Period,
-                Value = rank2Days
+                Value = sentiment7Days
             };
         }
 
