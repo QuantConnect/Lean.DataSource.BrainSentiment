@@ -86,7 +86,7 @@ namespace QuantConnect.DataLibrary.Tests
                     Time = DateTime.Today
                 };
         }
-        
+
         private IEnumerable<BrainStockRankingUniverse> CreateNewSelection()
         {
             return new []

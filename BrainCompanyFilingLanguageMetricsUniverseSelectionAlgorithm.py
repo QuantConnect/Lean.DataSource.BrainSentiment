@@ -17,14 +17,14 @@ class BrainCompanyFilingLanguageMetricsUniverseAlgorithm(QCAlgorithm):
     def Initialize(self):
         # Data ADDED via universe selection is added with Daily resolution.
         self.UniverseSettings.Resolution = Resolution.Daily
-        
+
         self.SetStartDate(2021, 2, 14)
         self.SetEndDate(2021, 2, 18)
         self.SetCash(100000)
 
         # add a custom universe data source (defaults to usa-equity)
         self.AddUniverse(BrainCompanyFilingLanguageMetricsUniverseAll, "BrainCompanyFilingLanguageMetricsUniverseAll", Resolution.Daily, self.UniverseSelection)
-        
+
     def UniverseSelection(self, data):
         for datum in data:
             self.Log(f"""{datum.Symbol},
@@ -39,11 +39,11 @@ class BrainCompanyFilingLanguageMetricsUniverseAlgorithm(QCAlgorithm):
                     {datum.ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations.SpecificDensity},
                     {datum.ReportSentiment.SentenceCount},
                     {datum.RiskFactorsStatementSentiment.MeanSentenceLength}""")
-        
+
         # define our selection criteria
         return [d.Symbol for d in data \
                     if d.ReportSentiment.Sentiment > 0 \
                     and d.ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations.Sentiment > 0]
-    
+
     def OnSecuritiesChanged(self, changes):
         self.Log(changes.ToString())

@@ -91,7 +91,7 @@ namespace QuantConnect.DataLibrary.Tests
                     Time = DateTime.Today
                 };
         }
-        
+
         private IEnumerable<BrainSentimentIndicatorUniverse> CreateNewSelection()
         {
             return new []

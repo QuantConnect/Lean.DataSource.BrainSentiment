@@ -17,23 +17,23 @@ class BrainStockRankingUniverseAlgorithm(QCAlgorithm):
     def Initialize(self):
         # Data ADDED via universe selection is added with Daily resolution.
         self.UniverseSettings.Resolution = Resolution.Daily
-        
+
         self.SetStartDate(2021, 2, 14)
         self.SetEndDate(2021, 2, 18)
         self.SetCash(100000)
 
         # add a custom universe data source (defaults to usa-equity)
         self.AddUniverse(BrainStockRankingUniverse, "BrainStockRankingUniverse", Resolution.Daily, self.UniverseSelection)
-        
+
     def UniverseSelection(self, data):
         for datum in data:
             self.Log(f"{datum.Symbol},{datum.Rank2Days},{datum.Rank3Days},{datum.Rank5Days},{datum.Rank10Days},{datum.Rank21Days}")
-        
+
         # define our selection criteria
         return [d.Symbol for d in data \
                     if d.Rank2Days > 0 \
                     and d.Rank3Days > 0 \
                     and d.Rank5Days > 0]
-    
+
     def OnSecuritiesChanged(self, changes):
         self.Log(changes.ToString())

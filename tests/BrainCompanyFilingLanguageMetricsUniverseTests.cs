@@ -84,7 +84,7 @@ namespace QuantConnect.DataLibrary.Tests
                     Time = DateTime.Today
                 };
         }
-        
+
         private IEnumerable<BrainCompanyFilingLanguageMetricsUniverse10K> CreateNewSelection()
         {
             return new []

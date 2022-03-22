@@ -17,14 +17,14 @@ class BrainSentimentIndicatorUniverseAlgorithm(QCAlgorithm):
     def Initialize(self):
         # Data ADDED via universe selection is added with Daily resolution.
         self.UniverseSettings.Resolution = Resolution.Daily
-        
+
         self.SetStartDate(2021, 2, 14)
         self.SetEndDate(2021, 2, 18)
         self.SetCash(100000)
 
         # add a custom universe data source (defaults to usa-equity)
         self.AddUniverse(BrainSentimentIndicatorUniverse, "BrainSentimentIndicatorUniverse", Resolution.Daily, self.UniverseSelection)
-        
+
     def UniverseSelection(self, data):
         for datum in data:
             self.Log(f"""{datum.Symbol},
@@ -38,11 +38,11 @@ class BrainSentimentIndicatorUniverseAlgorithm(QCAlgorithm):
                     {datum.Sentiment30Days},
                     {datum.TotalBuzzVolume30Days},
                     {datum.SentimentalBuzzVolume30Days}""")
-        
+
         # define our selection criteria
         return [d.Symbol for d in data \
                     if d.TotalArticleMentions7Days > 0 \
                     and d.Sentiment7Days]
-    
+
     def OnSecuritiesChanged(self, changes):
         self.Log(changes.ToString())

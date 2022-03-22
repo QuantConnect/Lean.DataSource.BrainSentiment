@@ -29,7 +29,7 @@ namespace QuantConnect.Algorithm.CSharp
             // Data ADDED via universe selection is added with Daily resolution.
             UniverseSettings.Resolution = Resolution.Daily;
 
-	        SetStartDate(2021, 2, 14);
+            SetStartDate(2021, 2, 14);
             SetEndDate(2021, 2, 18);
             SetCash(100000);
 
