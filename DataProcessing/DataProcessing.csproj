@@ -15,14 +15,22 @@
     </ItemGroup>
     <ItemGroup>
         <None Remove="CLRImports.py" />
-        <None Remove="process.py" />
-        <None Remove="config.json" />
         <Content Include="CLRImports.py">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
+        <None Remove="process.py" />
         <Content Include="process.py">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
+        <None Remove="universe.py" />
+        <Content Include="universe.py">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <None Remove="run_universe_generation_only.py" />
+        <Content Include="run_universe_generation_only.py">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <None Remove="config.json" />
         <Content Include="config.json">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>

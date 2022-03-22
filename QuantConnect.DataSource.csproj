@@ -18,10 +18,17 @@
     <Compile Remove="tests\**" />
     <EmbeddedResource Remove="tests\**" />
     <None Remove="tests\**" />
+    <Compile Remove="DataProcessing\**" />
+    <EmbeddedResource Remove="DataProcessing\**" />
+    <None Remove="DataProcessing\**" />
+    <Compile Remove="BrainCompanyFilingLanguageMetricsDataAlgorithm.cs" />
+    <None Remove="BrainCompanyFilingLanguageMetricsDataAlgorithm.cs" />
     <Compile Remove="BrainSentimentIndicatorDataAlgorithm.cs" />
     <None Remove="BrainSentimentIndicatorDataAlgorithm.cs" />
     <Compile Remove="BrainStockRankingDataAlgorithm.cs" />
     <None Remove="BrainStockRankingDataAlgorithm.cs" />
+    <Compile Remove="BrainCompanyFilingLanguageMetricsUniverseSelectionAlgorithm.cs" />
+    <None Remove="BrainCompanyFilingLanguageMetricsUniverseSelectionAlgorithm.cs" />
     <Compile Remove="BrainSentimentIndicatorUniverseSelectionAlgorithm.cs" />
     <None Remove="BrainSentimentIndicatorUniverseSelectionAlgorithm.cs" />
     <Compile Remove="BrainStockRankingUniverseSelectionAlgorithm.cs" />

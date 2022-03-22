@@ -8,6 +8,8 @@ from botocore.exceptions import ClientError
 # CLRImports is required to handle Lean C# objects
 from CLRImports import *
 
+from universe import UniverseDataProcessing
+
 S3_USER_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
 S3_USER_KEY_ACCESS = os.environ['AWS_SECRET_ACCESS_KEY']
 S3_BUCKET_NAME = os.environ['BRAIN_S3_BUCKET_NAME']
@@ -221,7 +223,7 @@ class BrainProcessor:
 
             if not sid or sid.isspace():
                 continue
-                
+
             try:
                 self.figi_map[figi] = SecurityIdentifier.Parse(sid)
             except:
@@ -319,7 +321,7 @@ class BrainProcessor:
                     lookback_days = index[1]
                     output_path = output_path / lookback_days
                     df_ticker = df_ticker.drop(columns=['lookback_days'])
-                    
+
                 output_path = output_path / PROCESS_DATE.strftime('%Y%m')
                 output_path.mkdir(parents=True, exist_ok=True)
                 output_path = output_path / f'{ticker.lower()}.csv'
@@ -339,7 +341,7 @@ class BrainProcessor:
 
         df_report = df_report.set_index('COMPOSITE_FIGI', append=True)
         df_report_diff = df_report_diff.set_index('COMPOSITE_FIGI', append=True)
-        
+
         # These columns appear in both data sets, and won't play nicely if we
         # try to join both DataFrames with the same columns
         df_report_diff = df_report_diff.drop(columns=['LAST_REPORT_DATE', 'LAST_REPORT_CATEGORY'])
@@ -347,82 +349,6 @@ class BrainProcessor:
         return df_report.join(df_report_diff)\
             .reset_index(level=2)\
             .drop_duplicates()
-            
-    def rank_universe_creation(self):
-        base_path = OUTPUT_DATA_PATH / "rankings"
-        universe_path = base_path / "universe"
-        Path.mkdir(universe_path, parents=True, exist_ok=True)
-        
-        paths = []
-        data = {}
-
-        for path, subdirs, files in os.walk(base_path):
-            for name in files:
-                paths.append(os.path.join(path, name))
-                
-        for file in paths:
-            ticker = file.split("\\")[-1].split(".")[0]
-            days = file.split("\\")[1]
-            
-            with open(file, "r", encoding="utf-8") as csv:
-                for line in csv.readlines():
-                    datum = line.split(",")
-                    date = datum[0]
-                    
-                    if date not in data:
-                        data[date] = {}
-                
-                    if ticker not in data[date]:
-                        data[date][ticker] = {}
-                        
-                    data[date][ticker][days] = datum[1].replace("\n", "")
-                    
-        for date, ticker_data in data.items():
-            for i, (ticker, datum) in enumerate(ticker_data.items()):
-                date_time = datetime.strptime(date, "%Y%m%d")
-                sid = SecurityIdentifier.GenerateEquity(ticker, Market.USA, True, self.map_file_provider, date_time)
-                mode = "a" if i != 0 else "w"
-                
-                with open(f"{universe_path}/{date}.csv", mode, encoding="utf-8") as csv:
-                    csv.write(f"{sid},{ticker},{datum['2']},{datum['3']},{datum['5']},{datum['10']},{datum['21']}\n")
-                    
-    def sentiment_universe_creation(self):
-        base_path = OUTPUT_DATA_PATH / "sentiment"
-        universe_path = base_path / "universe"
-        Path.mkdir(universe_path, parents=True, exist_ok=True)
-        
-        paths = []
-        data = {}
-
-        for path, subdirs, files in os.walk(base_path):
-            for name in files:
-                paths.append(os.path.join(path, name))
-                
-        for file in paths:
-            ticker = file.split("\\")[-1].split(".")[0]
-            days = file.split("\\")[1]
-            
-            with open(file, "r", encoding="utf-8") as csv:
-                for line in csv.readlines():
-                    datum = line.split(",")
-                    date = datum[0]
-                    
-                    if date not in data:
-                        data[date] = {}
-                
-                    if ticker not in data[date]:
-                        data[date][ticker] = {}
-                        
-                    data[date][ticker][days] = f"{datum[1]},{datum[2]},{datum[3]},{datum[4]},{datum[5]}".replace("\n", "")
-                    
-        for date, ticker_data in data.items():
-            for i, (ticker, datum) in enumerate(ticker_data.items()):
-                date_time = datetime.strptime(date, "%Y%m%d")
-                sid = SecurityIdentifier.GenerateEquity(ticker, Market.USA, True, self.map_file_provider, date_time)
-                mode = "a" if i != 0 else "w"
-                
-                with open(f"{universe_path}/{date}.csv", mode, encoding="utf-8") as csv:
-                    csv.write(f"{sid},{ticker},{datum['7']},{datum['30']}\n")
 
 def get_business_dates(date_start, date_end, date_format='dt'):
     """ Get business dates """
@@ -436,7 +362,7 @@ def get_business_dates(date_start, date_end, date_format='dt'):
 def download_file_s3(s3, file_prefix, category, date):
     file_name = f'{file_prefix}_{date.strftime(OUTPUT_DATE_FORMAT)}.csv'
     file_path = LOCAL_FOLDER / file_name
-    
+
     if file_path.exists():
         print(f'File already exists: {file_name}')
         return file_path
@@ -507,8 +433,12 @@ def main():
     files = download()
     processor = BrainProcessor(files)
     processor.process()
-    processor.rank_universe_creation()
-    processor.sentiment_universe_creation()
+
+    universe_processor = UniverseDataProcessing(processor.map_file_provider, OUTPUT_DATA_PATH)
+    universe_processor.report_10k_universe_creation()
+    universe_processor.report_all_universe_creation()
+    universe_processor.rank_universe_creation()
+    universe_processor.sentiment_universe_creation()
 
 if __name__ == '__main__':
     main()
