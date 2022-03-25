@@ -1,6 +1,7 @@
 import os
 import boto3
 import sqlalchemy
+import sys
 
 from pathlib import Path
 from botocore.exceptions import ClientError
@@ -76,93 +77,95 @@ OUTPUT_DIRECTORY_NAMES = {
 
 
 class BrainProcessor:
-    def __init__(self, files):
-        self.files = files
-        self.figi_map = None
+    def __init__(self, files=None):
         self.map_file_provider = LocalZipMapFileProvider()
         self.map_file_provider.Initialize(DefaultDataProvider())
-        self.map_file_resolver = self.map_file_provider.Get(Market.USA)
+        
+        if files is not None:
+            self.files = files
+            self.figi_map = None
+            self.map_file_resolver = self.map_file_provider.Get(Market.USA)
 
-        self.category_parsing_columns = {
-            RANKINGS_CATEGORY: ['ML_ALPHA'],
-            SENTIMENT_CATEGORY: ['VOLUME', 'VOLUME_SENTIMENT', 'SENTIMENT_SCORE', 'BUZZ_VOLUME', 'BUZZ_VOLUME_SENTIMENT'],
-            REPORT_ALL_CATEGORY: [
-                'LAST_REPORT_DATE',
-                'LAST_REPORT_CATEGORY',
-                'N_SENTENCES',
-                'MEAN_SENTENCE_LENGTH',
-                'SENTIMENT',
-                'SCORE_UNCERTAINTY',
-                'SCORE_LITIGIOUS',
-                'SCORE_CONSTRAINING',
-                'SCORE_INTERESTING',
-                'READABILITY',
-                'LEXICAL_RICHNESS',
-                'LEXICAL_DENSITY',
-                'SPECIFIC_DENSITY',
-                'RF_N_SENTENCES',
-                'RF_MEAN_SENTENCE_LENGTH',
-                'RF_SENTIMENT',
-                'RF_SCORE_UNCERTAINTY',
-                'RF_SCORE_LITIGIOUS',
-                'RF_SCORE_CONSTRAINING',
-                'RF_SCORE_INTERESTING',
-                'RF_READABILITY',
-                'RF_LEXICAL_RICHNESS',
-                'RF_LEXICAL_DENSITY',
-                'RF_SPECIFIC_DENSITY',
-                'MD_N_SENTENCES',
-                'MD_MEAN_SENTENCE_LENGTH',
-                'MD_SENTIMENT',
-                'MD_SCORE_UNCERTAINTY',
-                'MD_SCORE_LITIGIOUS',
-                'MD_SCORE_CONSTRAINING',
-                'MD_SCORE_INTERESTING',
-                'MD_READABILITY',
-                'MD_LEXICAL_RICHNESS',
-                'MD_LEXICAL_DENSITY',
-                'MD_SPECIFIC_DENSITY'
-            ],
-            REPORT_DIFF_ALL_CATEGORY: [
-                'LAST_REPORT_DATE',
-                'LAST_REPORT_CATEGORY',
-                'LAST_REPORT_PERIOD',
-                'PREV_REPORT_DATE',
-                'PREV_REPORT_CATEGORY',
-                'PREV_REPORT_PERIOD',
-                'SIMILARITY_ALL',
-                'SIMILARITY_POSITIVE',
-                'SIMILARITY_NEGATIVE',
-                'SIMILARITY_UNCERTAINTY',
-                'SIMILARITY_LITIGIOUS',
-                'SIMILARITY_CONSTRAINING',
-                'SIMILARITY_INTERESTING',
-                'RF_SIMILARITY_ALL',
-                'RF_SIMILARITY_POSITIVE',
-                'RF_SIMILARITY_NEGATIVE',
-                'MD_SIMILARITY_ALL',
-                'MD_SIMILARITY_POSITIVE',
-                'MD_SIMILARITY_NEGATIVE'
-            ]
-        }
+            self.category_parsing_columns = {
+                RANKINGS_CATEGORY: ['ML_ALPHA'],
+                SENTIMENT_CATEGORY: ['VOLUME', 'VOLUME_SENTIMENT', 'SENTIMENT_SCORE', 'BUZZ_VOLUME', 'BUZZ_VOLUME_SENTIMENT'],
+                REPORT_ALL_CATEGORY: [
+                    'LAST_REPORT_DATE',
+                    'LAST_REPORT_CATEGORY',
+                    'N_SENTENCES',
+                    'MEAN_SENTENCE_LENGTH',
+                    'SENTIMENT',
+                    'SCORE_UNCERTAINTY',
+                    'SCORE_LITIGIOUS',
+                    'SCORE_CONSTRAINING',
+                    'SCORE_INTERESTING',
+                    'READABILITY',
+                    'LEXICAL_RICHNESS',
+                    'LEXICAL_DENSITY',
+                    'SPECIFIC_DENSITY',
+                    'RF_N_SENTENCES',
+                    'RF_MEAN_SENTENCE_LENGTH',
+                    'RF_SENTIMENT',
+                    'RF_SCORE_UNCERTAINTY',
+                    'RF_SCORE_LITIGIOUS',
+                    'RF_SCORE_CONSTRAINING',
+                    'RF_SCORE_INTERESTING',
+                    'RF_READABILITY',
+                    'RF_LEXICAL_RICHNESS',
+                    'RF_LEXICAL_DENSITY',
+                    'RF_SPECIFIC_DENSITY',
+                    'MD_N_SENTENCES',
+                    'MD_MEAN_SENTENCE_LENGTH',
+                    'MD_SENTIMENT',
+                    'MD_SCORE_UNCERTAINTY',
+                    'MD_SCORE_LITIGIOUS',
+                    'MD_SCORE_CONSTRAINING',
+                    'MD_SCORE_INTERESTING',
+                    'MD_READABILITY',
+                    'MD_LEXICAL_RICHNESS',
+                    'MD_LEXICAL_DENSITY',
+                    'MD_SPECIFIC_DENSITY'
+                ],
+                REPORT_DIFF_ALL_CATEGORY: [
+                    'LAST_REPORT_DATE',
+                    'LAST_REPORT_CATEGORY',
+                    'LAST_REPORT_PERIOD',
+                    'PREV_REPORT_DATE',
+                    'PREV_REPORT_CATEGORY',
+                    'PREV_REPORT_PERIOD',
+                    'SIMILARITY_ALL',
+                    'SIMILARITY_POSITIVE',
+                    'SIMILARITY_NEGATIVE',
+                    'SIMILARITY_UNCERTAINTY',
+                    'SIMILARITY_LITIGIOUS',
+                    'SIMILARITY_CONSTRAINING',
+                    'SIMILARITY_INTERESTING',
+                    'RF_SIMILARITY_ALL',
+                    'RF_SIMILARITY_POSITIVE',
+                    'RF_SIMILARITY_NEGATIVE',
+                    'MD_SIMILARITY_ALL',
+                    'MD_SIMILARITY_POSITIVE',
+                    'MD_SIMILARITY_NEGATIVE'
+                ]
+            }
 
-        self.category_parsing_columns[REPORT_10K_CATEGORY] = list(self.category_parsing_columns[REPORT_ALL_CATEGORY])
-        self.category_parsing_columns[REPORT_DIFF_10K_CATEGORY] = list(self.category_parsing_columns[REPORT_DIFF_ALL_CATEGORY])
+            self.category_parsing_columns[REPORT_10K_CATEGORY] = list(self.category_parsing_columns[REPORT_ALL_CATEGORY])
+            self.category_parsing_columns[REPORT_DIFF_10K_CATEGORY] = list(self.category_parsing_columns[REPORT_DIFF_ALL_CATEGORY])
 
-        self.db_name = os.environ.get('DB_NAME')
-        self.db_host = os.environ.get('DB_HOST')
-        self.db_port = os.environ.get('DB_PORT', 3306)
-        self.db_user = os.environ.get('DB_USER')
-        self.db_pass = os.environ.get('DB_PASS')
-        self.db_security_table = os.environ['DB_SECDEF_TABLE']
+            self.db_name = os.environ.get('DB_NAME')
+            self.db_host = os.environ.get('DB_HOST')
+            self.db_port = os.environ.get('DB_PORT', 3306)
+            self.db_user = os.environ.get('DB_USER')
+            self.db_pass = os.environ.get('DB_PASS')
+            self.db_security_table = os.environ['DB_SECDEF_TABLE']
 
-        self.has_db_connection = self.db_name is not None and self.db_host is not None and self.db_user is not None
-        self.db_connection_info = None
+            self.has_db_connection = self.db_name is not None and self.db_host is not None and self.db_user is not None
+            self.db_connection_info = None
 
-        if self.has_db_connection:
-            self.db_connection_info = f'mysql+pymysql://{self.db_user}'
-            self.db_connection_info += f':{self.db_pass}' if self.db_pass is not None else ''
-            self.db_connection_info += f'@{self.db_host}:{self.db_port}/{self.db_name}'
+            if self.has_db_connection:
+                self.db_connection_info = f'mysql+pymysql://{self.db_user}'
+                self.db_connection_info += f':{self.db_pass}' if self.db_pass is not None else ''
+                self.db_connection_info += f'@{self.db_host}:{self.db_port}/{self.db_name}'
 
     def filter_files_by_category(self, category):
         return [(file_path, lookback_days, date) for (file_path, lookback_days, cat, date) in self.files if cat == category]
@@ -429,10 +432,13 @@ def download():
     return downloaded_files
 
 
-def main():
-    files = download()
-    processor = BrainProcessor(files)
-    processor.process()
+def main(universe_only = False):
+    if not universe_only:
+        files = download()
+        processor = BrainProcessor(files)
+        processor.process()
+    else:
+        processor = BrainProcessor()
 
     universe_processor = UniverseDataProcessing(processor.map_file_provider, OUTPUT_DATA_PATH)
     universe_processor.report_10k_universe_creation()
@@ -441,4 +447,6 @@ def main():
     universe_processor.sentiment_universe_creation()
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) != 2:
+        raise ValueError("process.py only takes 1 argument.")
+    main((sys.argv[-1] != "0" and sys.argv[-1] != "False"))

@@ -128,27 +128,29 @@ namespace QuantConnect.DataSource
                 TotalArticleMentions7Days = int.Parse(csv[2]),
                 SentimentalArticleMentions7Days = decimal.Parse(csv[3], NumberStyles.Any, CultureInfo.InvariantCulture),
                 Sentiment7Days = sentiment7Days,
-                TotalBuzzVolume7Days = !string.IsNullOrWhiteSpace(csv[5])
-                    ? decimal.Parse(csv[5], NumberStyles.Any, CultureInfo.InvariantCulture)
-                    : null,
-                SentimentalBuzzVolume7Days = !string.IsNullOrWhiteSpace(csv[6])
-                    ? decimal.Parse(csv[6], NumberStyles.Any, CultureInfo.InvariantCulture)
-                    : null,
+                TotalBuzzVolume7Days = ToDecimalOrNull(csv[5]),
+                SentimentalBuzzVolume7Days = ToDecimalOrNull(csv[6]),
 
                 TotalArticleMentions30Days = int.Parse(csv[7]),
                 SentimentalArticleMentions30Days = decimal.Parse(csv[8], NumberStyles.Any, CultureInfo.InvariantCulture),
                 Sentiment30Days = decimal.Parse(csv[9], NumberStyles.Any, CultureInfo.InvariantCulture),
-                TotalBuzzVolume30Days = !string.IsNullOrWhiteSpace(csv[10])
-                    ? decimal.Parse(csv[10], NumberStyles.Any, CultureInfo.InvariantCulture)
-                    : null,
-                SentimentalBuzzVolume30Days = !string.IsNullOrWhiteSpace(csv[11])
-                    ? decimal.Parse(csv[11], NumberStyles.Any, CultureInfo.InvariantCulture)
-                    : null,
+                TotalBuzzVolume30Days = ToDecimalOrNull(csv[10]),
+                SentimentalBuzzVolume30Days = ToDecimalOrNull(csv[11]),
 
                 Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]),
                 Time = date - Period,
                 Value = sentiment7Days
             };
+        }
+
+        /// <summary>
+        /// Helper class to get value if not null
+        /// </summary>
+        private decimal? ToDecimalOrNull(string value)
+        {
+            return !string.IsNullOrWhiteSpace(value)
+                ? decimal.Parse(value, NumberStyles.Any, CultureInfo.InvariantCulture)
+                : null;
         }
 
         /// <summary>

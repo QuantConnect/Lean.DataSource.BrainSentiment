@@ -26,10 +26,6 @@
         <Content Include="universe.py">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
-        <None Remove="run_universe_generation_only.py" />
-        <Content Include="run_universe_generation_only.py">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
         <None Remove="config.json" />
         <Content Include="config.json">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

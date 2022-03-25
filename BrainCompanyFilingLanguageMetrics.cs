@@ -47,7 +47,7 @@ namespace QuantConnect.DataSource
 
         public BrainCompanyFilingLanguageMetricsSimilarityDifference? Similarity { get; set; }
 
-        public static BrainCompanyFilingLanguageMetrics Parse(List<string> metrics)
+        public static BrainCompanyFilingLanguageMetrics Parse(List<string> metrics, List<string> similarity = null)
         {
             return new BrainCompanyFilingLanguageMetrics
             {
@@ -63,27 +63,9 @@ namespace QuantConnect.DataSource
                 LexicalDensity = !string.IsNullOrWhiteSpace(metrics[9]) ? QuantConnect.Parse.Decimal(metrics[9]) : null,
                 SpecificDensity = !string.IsNullOrWhiteSpace(metrics[10]) ? QuantConnect.Parse.Decimal(metrics[10]) : null,
 
-                Similarity = null
-            };
-        }
-
-        public static BrainCompanyFilingLanguageMetrics Parse(List<string> metrics, List<string> similarity)
-        {
-            return new BrainCompanyFilingLanguageMetrics
-            {
-                SentenceCount = !string.IsNullOrWhiteSpace(metrics[0]) ? (int)QuantConnect.Parse.Decimal(metrics[0]) : null,
-                MeanSentenceLength = !string.IsNullOrWhiteSpace(metrics[1]) ? QuantConnect.Parse.Decimal(metrics[1]) : null,
-                Sentiment = !string.IsNullOrWhiteSpace(metrics[2]) ? QuantConnect.Parse.Decimal(metrics[2]) : null,
-                Uncertainty = !string.IsNullOrWhiteSpace(metrics[3]) ? QuantConnect.Parse.Decimal(metrics[3]) : null,
-                Litigious = !string.IsNullOrWhiteSpace(metrics[4]) ? QuantConnect.Parse.Decimal(metrics[4]) : null,
-                Constraining = !string.IsNullOrWhiteSpace(metrics[5]) ? QuantConnect.Parse.Decimal(metrics[5]) : null,
-                Interesting = !string.IsNullOrWhiteSpace(metrics[6]) ? QuantConnect.Parse.Decimal(metrics[6]) : null,
-                Readability = !string.IsNullOrWhiteSpace(metrics[7]) ? QuantConnect.Parse.Decimal(metrics[7]) : null,
-                LexicalRichness = !string.IsNullOrWhiteSpace(metrics[8]) ? QuantConnect.Parse.Decimal(metrics[8]) : null,
-                LexicalDensity = !string.IsNullOrWhiteSpace(metrics[9]) ? QuantConnect.Parse.Decimal(metrics[9]) : null,
-                SpecificDensity = !string.IsNullOrWhiteSpace(metrics[10]) ? QuantConnect.Parse.Decimal(metrics[10]) : null,
-
-                Similarity = BrainCompanyFilingLanguageMetricsSimilarityDifference.Parse(similarity)
+                Similarity = similarity == null ?
+                    null :
+                    BrainCompanyFilingLanguageMetricsSimilarityDifference.Parse(similarity)
             };
         }
     }
