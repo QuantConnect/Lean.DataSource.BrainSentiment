@@ -113,6 +113,25 @@ namespace QuantConnect.DataSource
         }
 
         /// <summary>
+        /// Converts the instance to string
+        /// </summary>
+        public override string ToString()
+        {
+            return $@"{Symbol},
+                {ReportSentiment.Sentiment},
+                {RiskFactorsStatementSentiment.Uncertainty},
+                {ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations.Litigious},
+                {ReportSentiment.Constraining},
+                {RiskFactorsStatementSentiment.Interesting},
+                {ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations.Readability},
+                {ReportSentiment.LexicalRichness},
+                {RiskFactorsStatementSentiment.LexicalDensity},
+                {ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations.SpecificDensity},
+                {ReportSentiment.SentenceCount},
+                {RiskFactorsStatementSentiment.MeanSentenceLength}";
+        }
+
+        /// <summary>
         /// Gets the default resolution for this data and security type
         /// </summary>
         public override Resolution DefaultResolution()

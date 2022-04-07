@@ -30,4 +30,10 @@
   <ItemGroup>
     <ProjectReference Include="..\QuantConnect.DataSource.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Remove="../DataProcessing/config.json" />
+    <Content Include="../DataProcessing/config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>

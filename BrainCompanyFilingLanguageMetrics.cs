@@ -45,7 +45,7 @@ namespace QuantConnect.DataSource
 
         public decimal? SpecificDensity { get; set; }
 
-        public BrainCompanyFilingLanguageMetricsSimilarityDifference? Similarity { get; set; }
+        public BrainCompanyFilingLanguageMetricsSimilarityDifference Similarity { get; set; }
 
         public static BrainCompanyFilingLanguageMetrics Parse(List<string> metrics, List<string> similarity = null)
         {

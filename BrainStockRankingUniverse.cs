@@ -113,6 +113,14 @@ namespace QuantConnect.DataSource
         }
 
         /// <summary>
+        /// Converts the instance to string
+        /// </summary>
+        public override string ToString()
+        {
+            return $"{Symbol},{Rank2Days},{Rank3Days},{Rank5Days},{Rank10Days},{Rank21Days}";
+        }
+
+        /// <summary>
         /// Gets the default resolution for this data and security type
         /// </summary>
         public override Resolution DefaultResolution()

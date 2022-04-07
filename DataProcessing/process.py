@@ -10,17 +10,17 @@ from botocore.exceptions import ClientError
 from CLRImports import *
 
 from universe import UniverseDataProcessing
-
+'''
 S3_USER_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
 S3_USER_KEY_ACCESS = os.environ['AWS_SECRET_ACCESS_KEY']
 S3_BUCKET_NAME = os.environ['BRAIN_S3_BUCKET_NAME']
-
+'''
 DATE_FORMAT = '%Y-%m-%d'
 OUTPUT_DATE_FORMAT = '%Y%m%d'
 
-OUTPUT_DATA_PATH = Path('/temp-output-directory') / 'alternative' / 'brain'
-PROCESS_ALL = False if 'PROCESS_ALL' not in os.environ else os.environ['PROCESS_ALL'].lower() == 'true'
-PROCESS_DATE = datetime(2010, 1, 1) if PROCESS_ALL else datetime.strptime(os.environ['QC_DATAFLEET_DEPLOYMENT_DATE'], '%Y%m%d')
+OUTPUT_DATA_PATH = Path(Globals.DataFolder) / 'alternative' / 'brain'
+PROCESS_ALL = True #if 'PROCESS_ALL' not in os.environ else os.environ['PROCESS_ALL'].lower() == 'true'
+PROCESS_DATE = datetime(2010, 1, 1) #if PROCESS_ALL else datetime.strptime(os.environ['QC_DATAFLEET_DEPLOYMENT_DATE'], '%Y%m%d')
 PROCESS_DATE_STR = PROCESS_DATE.strftime(DATE_FORMAT)
 
 LOCAL_FOLDER = Path('./output')
@@ -440,7 +440,7 @@ def main(universe_only = False):
     else:
         processor = BrainProcessor()
 
-    universe_processor = UniverseDataProcessing(processor.map_file_provider, OUTPUT_DATA_PATH)
+    universe_processor = UniverseDataProcessing(processor.map_file_provider, PROCESS_ALL, PROCESS_DATE, OUTPUT_DATA_PATH)
     universe_processor.report_10k_universe_creation()
     universe_processor.report_all_universe_creation()
     universe_processor.rank_universe_creation()
