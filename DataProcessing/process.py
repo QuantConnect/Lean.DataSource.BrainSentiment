@@ -18,7 +18,7 @@ S3_BUCKET_NAME = os.environ['BRAIN_S3_BUCKET_NAME']
 DATE_FORMAT = '%Y-%m-%d'
 OUTPUT_DATE_FORMAT = '%Y%m%d'
 
-OUTPUT_DATA_PATH = Path(Globals.DataFolder) / 'alternative' / 'brain'
+OUTPUT_DATA_PATH = Path('/temp-output-directory') / 'alternative' / 'brain'
 PROCESS_ALL = False if 'PROCESS_ALL' not in os.environ else os.environ['PROCESS_ALL'].lower() == 'true'
 PROCESS_DATE = datetime(2010, 1, 1) if PROCESS_ALL else datetime.strptime(os.environ['QC_DATAFLEET_DEPLOYMENT_DATE'], '%Y%m%d')
 PROCESS_DATE_STR = PROCESS_DATE.strftime(DATE_FORMAT)
