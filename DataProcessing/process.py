@@ -84,7 +84,7 @@ class BrainProcessor:
         if files is not None:
             self.files = files
             self.figi_map = None
-            self.map_file_resolver = self.map_file_provider.Get(Market.USA)
+            self.map_file_resolver = self.map_file_provider.Get(AuxiliaryDataKey.EquityUsa)
 
             self.category_parsing_columns = {
                 RANKINGS_CATEGORY: ['ML_ALPHA'],
