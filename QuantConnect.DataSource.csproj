@@ -18,11 +18,22 @@
     <Compile Remove="tests\**" />
     <EmbeddedResource Remove="tests\**" />
     <None Remove="tests\**" />
-    <Compile Remove="Demonstration.cs" />
+    <Compile Remove="DataProcessing\**" />
+    <EmbeddedResource Remove="DataProcessing\**" />
+    <None Remove="DataProcessing\**" />
+    <Compile Remove="BrainCompanyFilingLanguageMetricsDataAlgorithm.cs" />
+    <None Remove="BrainCompanyFilingLanguageMetricsDataAlgorithm.cs" />
+    <Compile Remove="BrainSentimentIndicatorDataAlgorithm.cs" />
+    <None Remove="BrainSentimentIndicatorDataAlgorithm.cs" />
+    <Compile Remove="BrainStockRankingDataAlgorithm.cs" />
+    <None Remove="BrainStockRankingDataAlgorithm.cs" />
+    <Compile Remove="BrainCompanyFilingLanguageMetricsUniverseSelectionAlgorithm.cs" />
+    <None Remove="BrainCompanyFilingLanguageMetricsUniverseSelectionAlgorithm.cs" />
+    <Compile Remove="BrainSentimentIndicatorUniverseSelectionAlgorithm.cs" />
+    <None Remove="BrainSentimentIndicatorUniverseSelectionAlgorithm.cs" />
+    <Compile Remove="BrainStockRankingUniverseSelectionAlgorithm.cs" />
+    <None Remove="BrainStockRankingUniverseSelectionAlgorithm.cs" />
     <None Remove=".gitignore" />
-    <None Remove="process.sample.ipynb" />
-    <None Remove="process.sample.py" />
-    <None Remove="process.sample.sh" />
   </ItemGroup>
 
 </Project>

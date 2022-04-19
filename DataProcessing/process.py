@@ -1,32 +1,15 @@
 import os
 import boto3
-import pandas as pd
 import sqlalchemy
+import sys
 
 from pathlib import Path
-from datetime import datetime, timedelta
 from botocore.exceptions import ClientError
 
-# Setup pythonnet to use .NET 5.0
-# Will add support for pythonnet in the future so that this isn't required.
+# CLRImports is required to handle Lean C# objects
+from CLRImports import *
 
-import clr_loader
-import pythonnet
-
-pythonnet.set_runtime(clr_loader.get_coreclr(os.path.join(os.environ['RUNTIME_CONFIG_DIRECTORY'], "QuantConnect.Lean.Launcher.runtimeconfig.json")))
-
-from clr import AddReference
-
-AddReference('System')
-AddReference('QuantConnect.Common')
-AddReference('QuantConnect.Lean.Engine')
-# Required, otherwise this crashes for some reason
-AddReference('Fasterflect')
-
-from System import *
-from QuantConnect import *
-from QuantConnect.Data.Auxiliary import LocalZipMapFileProvider
-from QuantConnect.Lean.Engine.DataFeeds import DefaultDataProvider
+from universe import UniverseDataProcessing
 
 S3_USER_KEY_ID = os.environ['AWS_ACCESS_KEY_ID']
 S3_USER_KEY_ACCESS = os.environ['AWS_SECRET_ACCESS_KEY']
@@ -94,93 +77,95 @@ OUTPUT_DIRECTORY_NAMES = {
 
 
 class BrainProcessor:
-    def __init__(self, files):
-        self.files = files
-        self.figi_map = None
+    def __init__(self, files=None):
         self.map_file_provider = LocalZipMapFileProvider()
         self.map_file_provider.Initialize(DefaultDataProvider())
-        self.map_file_resolver = self.map_file_provider.Get(Market.USA)
+        
+        if files is not None:
+            self.files = files
+            self.figi_map = None
+            self.map_file_resolver = self.map_file_provider.Get(AuxiliaryDataKey.EquityUsa)
 
-        self.category_parsing_columns = {
-            RANKINGS_CATEGORY: ['ML_ALPHA'],
-            SENTIMENT_CATEGORY: ['VOLUME', 'VOLUME_SENTIMENT', 'SENTIMENT_SCORE', 'BUZZ_VOLUME', 'BUZZ_VOLUME_SENTIMENT'],
-            REPORT_ALL_CATEGORY: [
-                'LAST_REPORT_DATE',
-                'LAST_REPORT_CATEGORY',
-                'N_SENTENCES',
-                'MEAN_SENTENCE_LENGTH',
-                'SENTIMENT',
-                'SCORE_UNCERTAINTY',
-                'SCORE_LITIGIOUS',
-                'SCORE_CONSTRAINING',
-                'SCORE_INTERESTING',
-                'READABILITY',
-                'LEXICAL_RICHNESS',
-                'LEXICAL_DENSITY',
-                'SPECIFIC_DENSITY',
-                'RF_N_SENTENCES',
-                'RF_MEAN_SENTENCE_LENGTH',
-                'RF_SENTIMENT',
-                'RF_SCORE_UNCERTAINTY',
-                'RF_SCORE_LITIGIOUS',
-                'RF_SCORE_CONSTRAINING',
-                'RF_SCORE_INTERESTING',
-                'RF_READABILITY',
-                'RF_LEXICAL_RICHNESS',
-                'RF_LEXICAL_DENSITY',
-                'RF_SPECIFIC_DENSITY',
-                'MD_N_SENTENCES',
-                'MD_MEAN_SENTENCE_LENGTH',
-                'MD_SENTIMENT',
-                'MD_SCORE_UNCERTAINTY',
-                'MD_SCORE_LITIGIOUS',
-                'MD_SCORE_CONSTRAINING',
-                'MD_SCORE_INTERESTING',
-                'MD_READABILITY',
-                'MD_LEXICAL_RICHNESS',
-                'MD_LEXICAL_DENSITY',
-                'MD_SPECIFIC_DENSITY'
-            ],
-            REPORT_DIFF_ALL_CATEGORY: [
-                'LAST_REPORT_DATE',
-                'LAST_REPORT_CATEGORY',
-                'LAST_REPORT_PERIOD',
-                'PREV_REPORT_DATE',
-                'PREV_REPORT_CATEGORY',
-                'PREV_REPORT_PERIOD',
-                'SIMILARITY_ALL',
-                'SIMILARITY_POSITIVE',
-                'SIMILARITY_NEGATIVE',
-                'SIMILARITY_UNCERTAINTY',
-                'SIMILARITY_LITIGIOUS',
-                'SIMILARITY_CONSTRAINING',
-                'SIMILARITY_INTERESTING',
-                'RF_SIMILARITY_ALL',
-                'RF_SIMILARITY_POSITIVE',
-                'RF_SIMILARITY_NEGATIVE',
-                'MD_SIMILARITY_ALL',
-                'MD_SIMILARITY_POSITIVE',
-                'MD_SIMILARITY_NEGATIVE'
-            ]
-        }
+            self.category_parsing_columns = {
+                RANKINGS_CATEGORY: ['ML_ALPHA'],
+                SENTIMENT_CATEGORY: ['VOLUME', 'VOLUME_SENTIMENT', 'SENTIMENT_SCORE', 'BUZZ_VOLUME', 'BUZZ_VOLUME_SENTIMENT'],
+                REPORT_ALL_CATEGORY: [
+                    'LAST_REPORT_DATE',
+                    'LAST_REPORT_CATEGORY',
+                    'N_SENTENCES',
+                    'MEAN_SENTENCE_LENGTH',
+                    'SENTIMENT',
+                    'SCORE_UNCERTAINTY',
+                    'SCORE_LITIGIOUS',
+                    'SCORE_CONSTRAINING',
+                    'SCORE_INTERESTING',
+                    'READABILITY',
+                    'LEXICAL_RICHNESS',
+                    'LEXICAL_DENSITY',
+                    'SPECIFIC_DENSITY',
+                    'RF_N_SENTENCES',
+                    'RF_MEAN_SENTENCE_LENGTH',
+                    'RF_SENTIMENT',
+                    'RF_SCORE_UNCERTAINTY',
+                    'RF_SCORE_LITIGIOUS',
+                    'RF_SCORE_CONSTRAINING',
+                    'RF_SCORE_INTERESTING',
+                    'RF_READABILITY',
+                    'RF_LEXICAL_RICHNESS',
+                    'RF_LEXICAL_DENSITY',
+                    'RF_SPECIFIC_DENSITY',
+                    'MD_N_SENTENCES',
+                    'MD_MEAN_SENTENCE_LENGTH',
+                    'MD_SENTIMENT',
+                    'MD_SCORE_UNCERTAINTY',
+                    'MD_SCORE_LITIGIOUS',
+                    'MD_SCORE_CONSTRAINING',
+                    'MD_SCORE_INTERESTING',
+                    'MD_READABILITY',
+                    'MD_LEXICAL_RICHNESS',
+                    'MD_LEXICAL_DENSITY',
+                    'MD_SPECIFIC_DENSITY'
+                ],
+                REPORT_DIFF_ALL_CATEGORY: [
+                    'LAST_REPORT_DATE',
+                    'LAST_REPORT_CATEGORY',
+                    'LAST_REPORT_PERIOD',
+                    'PREV_REPORT_DATE',
+                    'PREV_REPORT_CATEGORY',
+                    'PREV_REPORT_PERIOD',
+                    'SIMILARITY_ALL',
+                    'SIMILARITY_POSITIVE',
+                    'SIMILARITY_NEGATIVE',
+                    'SIMILARITY_UNCERTAINTY',
+                    'SIMILARITY_LITIGIOUS',
+                    'SIMILARITY_CONSTRAINING',
+                    'SIMILARITY_INTERESTING',
+                    'RF_SIMILARITY_ALL',
+                    'RF_SIMILARITY_POSITIVE',
+                    'RF_SIMILARITY_NEGATIVE',
+                    'MD_SIMILARITY_ALL',
+                    'MD_SIMILARITY_POSITIVE',
+                    'MD_SIMILARITY_NEGATIVE'
+                ]
+            }
 
-        self.category_parsing_columns[REPORT_10K_CATEGORY] = list(self.category_parsing_columns[REPORT_ALL_CATEGORY])
-        self.category_parsing_columns[REPORT_DIFF_10K_CATEGORY] = list(self.category_parsing_columns[REPORT_DIFF_ALL_CATEGORY])
+            self.category_parsing_columns[REPORT_10K_CATEGORY] = list(self.category_parsing_columns[REPORT_ALL_CATEGORY])
+            self.category_parsing_columns[REPORT_DIFF_10K_CATEGORY] = list(self.category_parsing_columns[REPORT_DIFF_ALL_CATEGORY])
 
-        self.db_name = os.environ.get('DB_NAME')
-        self.db_host = os.environ.get('DB_HOST')
-        self.db_port = os.environ.get('DB_PORT', 3306)
-        self.db_user = os.environ.get('DB_USER')
-        self.db_pass = os.environ.get('DB_PASS')
-        self.db_security_table = os.environ['DB_SECDEF_TABLE']
+            self.db_name = os.environ.get('DB_NAME')
+            self.db_host = os.environ.get('DB_HOST')
+            self.db_port = os.environ.get('DB_PORT', 3306)
+            self.db_user = os.environ.get('DB_USER')
+            self.db_pass = os.environ.get('DB_PASS')
+            self.db_security_table = os.environ['DB_SECDEF_TABLE']
 
-        self.has_db_connection = self.db_name is not None and self.db_host is not None and self.db_user is not None
-        self.db_connection_info = None
+            self.has_db_connection = self.db_name is not None and self.db_host is not None and self.db_user is not None
+            self.db_connection_info = None
 
-        if self.has_db_connection:
-            self.db_connection_info = f'mysql+pymysql://{self.db_user}'
-            self.db_connection_info += f':{self.db_pass}' if self.db_pass is not None else ''
-            self.db_connection_info += f'@{self.db_host}:{self.db_port}/{self.db_name}'
+            if self.has_db_connection:
+                self.db_connection_info = f'mysql+pymysql://{self.db_user}'
+                self.db_connection_info += f':{self.db_pass}' if self.db_pass is not None else ''
+                self.db_connection_info += f'@{self.db_host}:{self.db_port}/{self.db_name}'
 
     def filter_files_by_category(self, category):
         return [(file_path, lookback_days, date) for (file_path, lookback_days, cat, date) in self.files if cat == category]
@@ -241,7 +226,7 @@ class BrainProcessor:
 
             if not sid or sid.isspace():
                 continue
-                
+
             try:
                 self.figi_map[figi] = SecurityIdentifier.Parse(sid)
             except:
@@ -339,7 +324,7 @@ class BrainProcessor:
                     lookback_days = index[1]
                     output_path = output_path / lookback_days
                     df_ticker = df_ticker.drop(columns=['lookback_days'])
-                    
+
                 output_path = output_path / PROCESS_DATE.strftime('%Y%m')
                 output_path.mkdir(parents=True, exist_ok=True)
                 output_path = output_path / f'{ticker.lower()}.csv'
@@ -359,7 +344,7 @@ class BrainProcessor:
 
         df_report = df_report.set_index('COMPOSITE_FIGI', append=True)
         df_report_diff = df_report_diff.set_index('COMPOSITE_FIGI', append=True)
-        
+
         # These columns appear in both data sets, and won't play nicely if we
         # try to join both DataFrames with the same columns
         df_report_diff = df_report_diff.drop(columns=['LAST_REPORT_DATE', 'LAST_REPORT_CATEGORY'])
@@ -380,7 +365,7 @@ def get_business_dates(date_start, date_end, date_format='dt'):
 def download_file_s3(s3, file_prefix, category, date):
     file_name = f'{file_prefix}_{date.strftime(OUTPUT_DATE_FORMAT)}.csv'
     file_path = LOCAL_FOLDER / file_name
-    
+
     if file_path.exists():
         print(f'File already exists: {file_name}')
         return file_path
@@ -447,10 +432,21 @@ def download():
     return downloaded_files
 
 
-def main():
-    files = download()
-    processor = BrainProcessor(files)
-    processor.process()
+def main(universe_only = False):
+    if not universe_only:
+        files = download()
+        processor = BrainProcessor(files)
+        processor.process()
+    else:
+        processor = BrainProcessor()
+
+    universe_processor = UniverseDataProcessing(processor.map_file_provider, PROCESS_ALL, PROCESS_DATE, OUTPUT_DATA_PATH)
+    universe_processor.report_10k_universe_creation()
+    universe_processor.report_all_universe_creation()
+    universe_processor.rank_universe_creation()
+    universe_processor.sentiment_universe_creation()
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) != 2:
+        raise ValueError("process.py only takes 1 argument.")
+    main((sys.argv[-1] != "0" and sys.argv[-1] != "False"))

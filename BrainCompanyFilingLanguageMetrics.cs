@@ -47,7 +47,7 @@ namespace QuantConnect.DataSource
 
         public BrainCompanyFilingLanguageMetricsSimilarityDifference Similarity { get; set; }
 
-        public static BrainCompanyFilingLanguageMetrics Parse(List<string> metrics, List<string> similarity)
+        public static BrainCompanyFilingLanguageMetrics Parse(List<string> metrics, List<string> similarity = null)
         {
             return new BrainCompanyFilingLanguageMetrics
             {
@@ -63,7 +63,9 @@ namespace QuantConnect.DataSource
                 LexicalDensity = !string.IsNullOrWhiteSpace(metrics[9]) ? QuantConnect.Parse.Decimal(metrics[9]) : null,
                 SpecificDensity = !string.IsNullOrWhiteSpace(metrics[10]) ? QuantConnect.Parse.Decimal(metrics[10]) : null,
 
-                Similarity = BrainCompanyFilingLanguageMetricsSimilarityDifference.Parse(similarity)
+                Similarity = similarity == null ?
+                    null :
+                    BrainCompanyFilingLanguageMetricsSimilarityDifference.Parse(similarity)
             };
         }
     }

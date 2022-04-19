@@ -4,7 +4,18 @@
     <RootNamespace>QuantConnect.DataLibrary.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\Demonstration.cs" Link="Demonstration.cs" />
+    <Compile Include="..\BrainCompanyFilingLanguageMetricsDataAlgorithm.cs" Link="BrainCompanyFilingLanguageMetricsDataAlgorithm.cs" />
+    <Content Include="..\BrainCompanyFilingLanguageMetricsDataAlgorithm.py" Link="BrainCompanyFilingLanguageMetricsDataAlgorithm.py" />
+    <Compile Include="..\BrainSentimentIndicatorDataAlgorithm.cs" Link="BrainSentimentIndicatorDataAlgorithm.cs" />
+    <Content Include="..\BrainSentimentIndicatorDataAlgorithm.py" Link="BrainSentimentIndicatorDataAlgorithm.py" />
+    <Compile Include="..\BrainStockRankingDataAlgorithm.cs" Link="BrainStockRankingDataAlgorithm.cs" />
+    <Content Include="..\BrainStockRankingDataAlgorithm.py" Link="BrainStockRankingDataAlgorithm.py" />
+    <Compile Include="..\BrainCompanyFilingLanguageMetricsUniverseAll.cs" Link="BrainCompanyFilingLanguageMetricsUniverseAll.cs" />
+    <Content Include="..\BrainCompanyFilingLanguageMetricsUniverseAll.py" Link="BrainCompanyFilingLanguageMetricsUniverseAll.py" />
+    <Compile Include="..\BrainSentimentIndicatorUniverseSelectionAlgorithm.cs" Link="BrainSentimentIndicatorUniverseSelectionAlgorithm.cs" />
+    <Content Include="..\BrainSentimentIndicatorUniverseSelectionAlgorithm.py" Link="BrainSentimentIndicatorUniverseSelectionAlgorithm.py" />
+    <Compile Include="..\BrainStockRankingUniverseSelectionAlgorithm.cs" Link="BrainStockRankingUniverseSelectionAlgorithm.cs" />
+    <Content Include="..\BrainStockRankingUniverseSelectionAlgorithm.py" Link="BrainStockRankingUniverseSelectionAlgorithm.py" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="protobuf-net" Version="3.0.29" />
@@ -18,5 +29,11 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\QuantConnect.DataSource.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="config.json" />
+    <Content Include="config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 </Project>

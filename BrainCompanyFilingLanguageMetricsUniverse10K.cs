@@ -14,21 +14,13 @@
  *
 */
 
-using ProtoBuf;
-
 namespace QuantConnect.DataSource
 {
     /// <summary>
-    /// Brain universe stock rankings on expected returns in the next 30 days
+    /// Brain sentiment universe on only 10-K SEC reports
     /// </summary>
-    [ProtoContract(SkipConstructor = true)]
-    public class BrainStockRanking30Day : BrainStockRankingBase<BrainStockRanking30Day>
+    public class BrainCompanyFilingLanguageMetricsUniverse10K : BrainCompanyFilingLanguageMetricsUniverse<BrainCompanyFilingLanguageMetricsUniverse10K>
     {
-        /// <summary>
-        /// Data source ID
-        /// </summary>
-        public static int DataSourceId { get; } = 2029;
-
-        protected override int LookbackDays { get; set; } = 30;
+        protected override string ReportType { get; set; } = "10k";
     }
 }
