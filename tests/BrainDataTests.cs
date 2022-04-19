@@ -35,35 +35,32 @@ namespace QuantConnect.DataLibrary.Tests
         [Test]
         public void Thing()
         {
-            var dataFolder = new DirectoryInfo(Globals.DataFolder + "/alternative/brain/report_all");
-            var date = DateTime.ParseExact(dataFolder.GetDirectories().First().Name, "yyyyMM", CultureInfo.InvariantCulture);
+            var factory = new BrainCompanyFilingLanguageMetrics10K();
 
-            var tickers = dataFolder.GetDirectories().First().GetFiles();
-            var factory = new BrainCompanyFilingLanguageMetricsAll();
+            var lines = new List<string>{
+                "20210101,20210101,20210101,869,516,0.1196,-1.6457,-1.5827,869,516,0.1196,-1.6457,-1.5827,869,516,0.1196,-1.6457,-1.5827,869,516,0.1196,-1.6457,-1.5827,869,516,0.1196,-1.6457,-1.5827,869,516,0.1196,-1.6457,-1.5827,869,516,0.1196,-1.6457,20210101,869,516,0.1196,-1.6457,-1.5827,869,516,0.1196,-1.6457,-1.5827,869,516,0.1196,-1.6457,-1.5827,869,516,0.1196,-1.6457,-1.5827,869,516,0.1196,-1.6457,-1.5827,869,516,0.1196,-1.6457,-1.5827",
+                "20210104,20210104,20210104,702,432,0.1279,-2.3979,-2.1557,702,432,0.1279,-2.3979,-2.1557,702,432,0.1279,-2.3979,-2.1557,702,432,0.1279,-2.3979,-2.1557,702,432,0.1279,-2.3979,-2.1557,702,432,0.1279,-2.3979,-2.1557,702,432,0.1279,-2.3979,20210104,702,432,0.1279,-2.3979,-2.1557,702,432,0.1279,-2.3979,-2.1557,702,432,0.1279,-2.3979,-2.1557,702,432,0.1279,-2.3979,-2.1557,702,432,0.1279,-2.3979,-2.1557,702,432,0.1279,-2.3979,-2.1557",
+                "20210105,20210105,20210105,691,414,0.0959,-2.4157,-2.2633,691,414,0.0959,-2.4157,-2.2633,691,414,0.0959,-2.4157,-2.2633,691,414,0.0959,-2.4157,-2.2633,691,414,0.0959,-2.4157,-2.2633,691,414,0.0959,-2.4157,-2.2633,691,414,0.0959,-2.4157,20210105,691,414,0.0959,-2.4157,-2.2633,691,414,0.0959,-2.4157,-2.2633,691,414,0.0959,-2.4157,-2.2633,691,414,0.0959,-2.4157,-2.2633,691,414,0.0959,-2.4157,-2.2633,691,414,0.0959,-2.4157,-2.2633"
+                };
 
-            foreach (var file in tickers) 
+            var config = new SubscriptionDataConfig(
+                typeof(BrainCompanyFilingLanguageMetricsAll),
+                Symbol.Create("AAPL", SecurityType.Base, Market.USA, baseDataType: typeof(BrainCompanyFilingLanguageMetricsAll)),
+                Resolution.Daily,
+                TimeZones.Utc,
+                TimeZones.Utc,
+                false,
+                false,
+                false,
+                true,
+                null
+            );
+
+            foreach (var line in lines)
             {
-                var ticker = file.Name.Replace(".csv", "").ToUpper();
-                var lines = File.ReadAllLines(file.FullName).ToList();
-
-                var config = new SubscriptionDataConfig(
-                    typeof(BrainCompanyFilingLanguageMetricsAll),
-                    Symbol.Create(ticker, SecurityType.Base, Market.USA, baseDataType: typeof(BrainCompanyFilingLanguageMetricsAll)),
-                    Resolution.Daily,
-                    TimeZones.Utc,
-                    TimeZones.Utc,
-                    false,
-                    false,
-                    false,
-                    true,
-                    null
-                );
-
-                foreach (var line in lines)
-                {
-                    var a = factory.Reader(config, line, date, false);
-                    Console.WriteLine(a.ToString());
-                }
+                var date = DateTime.ParseExact(line.Split(",").First(), "yyyyMMdd", CultureInfo.InvariantCulture);
+                var a = factory.Reader(config, line, date, false);
+                Console.WriteLine(a.ToString());
             }
         }
         
