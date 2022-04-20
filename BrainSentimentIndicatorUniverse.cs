@@ -31,17 +31,17 @@ namespace QuantConnect.DataSource
         /// <summary>
         /// Total Article Mentions in 7 days
         /// </summary>
-        public int TotalArticleMentions7Days { get; set; }
+        public int? TotalArticleMentions7Days { get; set; }
 
         /// <summary>
         /// Sentimental Article Mentions in 7 days
         /// </summary>
-        public decimal SentimentalArticleMentions7Days { get; set; }
+        public decimal? SentimentalArticleMentions7Days { get; set; }
 
         /// <summary>
         /// Setiment Score in 7 days
         /// </summary>
-        public decimal Sentiment7Days { get; set; }
+        public decimal? Sentiment7Days { get; set; }
 
         /// <summary>
         /// Total Buzz Volume in 7 days
@@ -56,17 +56,17 @@ namespace QuantConnect.DataSource
         /// <summary>
         /// Total Article Mentions in 30 days
         /// </summary>
-        public int TotalArticleMentions30Days { get; set; }
+        public int? TotalArticleMentions30Days { get; set; }
 
         /// <summary>
         /// Sentimental Article Mentions in 30 days
         /// </summary>
-        public decimal SentimentalArticleMentions30Days { get; set; }
+        public decimal? SentimentalArticleMentions30Days { get; set; }
 
         /// <summary>
         /// Setiment Score in 30 days
         /// </summary>
-        public decimal Sentiment30Days { get; set; }
+        public decimal? Sentiment30Days { get; set; }
 
         /// <summary>
         /// Total Buzz Volume in 30 days
@@ -125,15 +125,15 @@ namespace QuantConnect.DataSource
 
             return new BrainSentimentIndicatorUniverse
             {
-                TotalArticleMentions7Days = int.Parse(csv[2]),
-                SentimentalArticleMentions7Days = decimal.Parse(csv[3], NumberStyles.Any, CultureInfo.InvariantCulture),
+                TotalArticleMentions7Days = csv[2].IfNotNullOrEmpty<int?>(s => int.Parse(s)),
+                SentimentalArticleMentions7Days = csv[3].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture)),
                 Sentiment7Days = sentiment7Days,
                 TotalBuzzVolume7Days = csv[5].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture)),
                 SentimentalBuzzVolume7Days = csv[6].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture)),
 
-                TotalArticleMentions30Days = int.Parse(csv[7]),
-                SentimentalArticleMentions30Days = decimal.Parse(csv[8], NumberStyles.Any, CultureInfo.InvariantCulture),
-                Sentiment30Days = decimal.Parse(csv[9], NumberStyles.Any, CultureInfo.InvariantCulture),
+                TotalArticleMentions30Days = csv[7].IfNotNullOrEmpty<int?>(s => int.Parse(s)),
+                SentimentalArticleMentions30Days = csv[8].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture)),
+                Sentiment30Days = csv[9].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture)),
                 TotalBuzzVolume30Days = csv[10].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture)),
                 SentimentalBuzzVolume30Days = csv[11].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture)),
 

@@ -24,7 +24,7 @@ class UniverseDataProcessing:
                 sid = SecurityIdentifier.GenerateEquity(ticker, Market.USA, True, self.map_file_provider, date_time)
 
                 with open(f"{universe_path}/{date}.csv", "a", encoding="utf-8") as csv:
-                    csv.write(f"{sid},{ticker.upper()},{datum['2']},{datum['3']},{datum['5']},{datum['10']},{datum['21']}\n")
+                    csv.write(f"{sid},{ticker.upper()},{datum['2'] if '2' in datum else ''},{datum['3'] if '3' in datum else ''},{datum['5'] if '5' in datum else ''},{datum['10'] if '10' in datum else ''},{datum['21'] if '21' in datum else ''}\n")
 
     def report_universe_creation(self, data, universe_path):
         for date, ticker_data in data.items():
@@ -52,7 +52,7 @@ class UniverseDataProcessing:
                 sid = SecurityIdentifier.GenerateEquity(ticker, Market.USA, True, self.map_file_provider, date_time)
 
                 with open(f"{universe_path}/{date}.csv", "a", encoding="utf-8") as csv:
-                    csv.write(f"{sid},{ticker.upper()},{datum['7']},{datum['30']}\n")
+                    csv.write(f"{sid},{ticker.upper()},{datum['7'] if '7' in datum else ',,,,'},{datum['30'] if '30' in datum else ',,,,'}\n")
 
     def universe_creation(self, dataset, report=False):
         base_path = self.path / dataset
