@@ -69,7 +69,7 @@ class UniverseDataProcessing:
         for file in paths:
             if "universe" in file: continue
 
-            ticker = file.split("\\")[-1].split(".")[0]
+            ticker = file.split(os.sep)[-1].split(".")[0]
 
             with open(file, "r", encoding="utf-8") as csv:
                 for line in csv.readlines():
@@ -86,7 +86,7 @@ class UniverseDataProcessing:
                         data[date][ticker] = {}
 
                     if not report:
-                        days = file.split("\\")[-3]
+                        days = file.split(os.sep)[-3]
                         data[date][ticker][days] = ",".join(datum[1:]).replace("\n", "")
                     else:
                         data[date][ticker] = ",".join(datum[3:36]).replace("\n", "")
