@@ -33,6 +33,30 @@ namespace QuantConnect.DataLibrary.Tests
     public class BrainSentimentIndicatorUniverseTests
     {
         [Test]
+        public void ReaderTest()
+        {
+            var factory = new BrainSentimentIndicatorUniverse();
+            var line = "AAPL R735QTJ8XC9X,AAPL,869,516,0.1196,,,5101,3176,0.0976,-0.169,0.0888";
+
+            var config = new SubscriptionDataConfig(
+                typeof(BrainSentimentIndicatorUniverse),
+                Symbol.Create("AAPL", SecurityType.Base, Market.USA, baseDataType: typeof(BrainSentimentIndicatorUniverse)),
+                Resolution.Daily,
+                TimeZones.Utc,
+                TimeZones.Utc,
+                false,
+                false,
+                false,
+                true,
+                null
+            );
+
+            var date = DateTime.Today;
+            var a = factory.Reader(config, line, date, false);
+            Console.WriteLine(a.ToString());
+        }
+
+        [Test]
         public void JsonRoundTrip()
         {
             var expected = CreateNewInstance();
@@ -76,11 +100,11 @@ namespace QuantConnect.DataLibrary.Tests
         {
             return new BrainSentimentIndicatorUniverse
                 {
-                    TotalArticleMentions7Days = 10,
-                    SentimentalArticleMentions7Days = 5m,
-                    Sentiment7Days = 0.5m,
-                    TotalBuzzVolume7Days = 200m,
-                    SentimentalBuzzVolume7Days = 100m,
+                    TotalArticleMentions7Days = null,
+                    SentimentalArticleMentions7Days = null,
+                    Sentiment7Days = null,
+                    TotalBuzzVolume7Days = null,
+                    SentimentalBuzzVolume7Days = null,
                     TotalArticleMentions30Days = 100,
                     SentimentalArticleMentions30Days = 50m,
                     Sentiment30Days = 0.25m,

@@ -33,6 +33,30 @@ namespace QuantConnect.DataLibrary.Tests
     public class BrainStockRankingUniverseTests
     {
         [Test]
+        public void ReaderTest()
+        {
+            var factory = new BrainStockRankingUniverse();
+            var line = "AAPL R735QTJ8XC9X,AAPL,1,2,,,20";
+
+            var config = new SubscriptionDataConfig(
+                typeof(BrainStockRankingUniverse),
+                Symbol.Create("AAPL", SecurityType.Base, Market.USA, baseDataType: typeof(BrainStockRankingUniverse)),
+                Resolution.Daily,
+                TimeZones.Utc,
+                TimeZones.Utc,
+                false,
+                false,
+                false,
+                true,
+                null
+            );
+
+            var date = DateTime.Today;
+            var a = factory.Reader(config, line, date, false);
+            Console.WriteLine(a.ToString());
+        }
+
+        [Test]
         public void JsonRoundTrip()
         {
             var expected = CreateNewInstance();
@@ -76,7 +100,7 @@ namespace QuantConnect.DataLibrary.Tests
         {
             return new BrainStockRankingUniverse
                 {
-                    Rank2Days = 5m,
+                    Rank2Days = null,
                     Rank3Days = 5m,
                     Rank5Days = 100m,
                     Rank10Days = 10000m,
