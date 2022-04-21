@@ -15,23 +15,42 @@
 */
 
 using System;
-using ProtoBuf;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using ProtoBuf.Meta;
 using Newtonsoft.Json;
-using NodaTime;
 using NUnit.Framework;
 using QuantConnect.Data;
 using QuantConnect.DataSource;
-using QuantConnect.Data.Market;
+using System.Collections.Generic;
 
 namespace QuantConnect.DataLibrary.Tests
 {
     [TestFixture]
     public class BrainSentimentIndicatorUniverseTests
     {
+        [Test]
+        public void ReaderTest()
+        {
+            var factory = new BrainSentimentIndicatorUniverse();
+            var line = "AAPL R735QTJ8XC9X,AAPL,869,516,0.1196,,,5101,3176,0.0976,-0.169,0.0888";
+
+            var date = new DateTime(2022, 04, 21);
+            var data = (BrainSentimentIndicatorUniverse)factory.Reader(null, line, date, false);
+            Assert.AreEqual(Time.OneDay, data.Period);
+            Assert.AreEqual(date, data.EndTime);
+            Assert.AreEqual(0.1196, data.Sentiment7Days);
+            Assert.AreEqual(0.0976, data.Sentiment30Days);
+            Assert.AreEqual(516, data.SentimentalArticleMentions7Days);
+            Assert.AreEqual(3176, data.SentimentalArticleMentions30Days);
+            Assert.AreEqual(null, data.SentimentalBuzzVolume7Days);
+            Assert.AreEqual(0.0888, data.SentimentalBuzzVolume30Days);
+            Assert.AreEqual(869, data.TotalArticleMentions7Days);
+            Assert.AreEqual(5101, data.TotalArticleMentions30Days);
+            Assert.AreEqual(null, data.TotalBuzzVolume7Days);
+            Assert.AreEqual(-0.169, data.TotalBuzzVolume30Days);
+            Assert.AreEqual(0.1196, data.Price);
+            Assert.AreEqual("AAPL", data.Symbol.Value);
+        }
+
         [Test]
         public void JsonRoundTrip()
         {
@@ -76,11 +95,11 @@ namespace QuantConnect.DataLibrary.Tests
         {
             return new BrainSentimentIndicatorUniverse
                 {
-                    TotalArticleMentions7Days = 10,
-                    SentimentalArticleMentions7Days = 5m,
-                    Sentiment7Days = 0.5m,
-                    TotalBuzzVolume7Days = 200m,
-                    SentimentalBuzzVolume7Days = 100m,
+                    TotalArticleMentions7Days = null,
+                    SentimentalArticleMentions7Days = null,
+                    Sentiment7Days = null,
+                    TotalBuzzVolume7Days = null,
+                    SentimentalBuzzVolume7Days = null,
                     TotalArticleMentions30Days = 100,
                     SentimentalArticleMentions30Days = 50m,
                     Sentiment30Days = 0.25m,
@@ -88,7 +107,7 @@ namespace QuantConnect.DataLibrary.Tests
                     SentimentalBuzzVolume30Days = 1000m,
 
                     Symbol = new Symbol(SecurityIdentifier.Parse("A RPTMYV3VC57P"), "A"),
-                    Time = DateTime.Today
+                    Time = new DateTime(2022, 04, 21)
                 };
         }
 
@@ -110,7 +129,7 @@ namespace QuantConnect.DataLibrary.Tests
                     SentimentalBuzzVolume30Days = 1000m,
 
                     Symbol = new Symbol(SecurityIdentifier.Parse("A RPTMYV3VC57P"), "A"),
-                    Time = DateTime.Today
+                    Time = new DateTime(2022, 04, 21)
                 },
                 new BrainSentimentIndicatorUniverse
                 {
@@ -126,7 +145,7 @@ namespace QuantConnect.DataLibrary.Tests
                     SentimentalBuzzVolume30Days = 1000m,
 
                     Symbol = new Symbol(SecurityIdentifier.Parse("AA R735QTJ8XC9X"), "HWM"),
-                    Time = DateTime.Today
+                    Time = new DateTime(2022, 04, 21)
                 }
             };
         }

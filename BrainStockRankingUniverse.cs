@@ -31,27 +31,27 @@ namespace QuantConnect.DataSource
         /// <summary>
         /// Rank prediction score in 2 days
         /// </summary>
-        public decimal Rank2Days { get; set; }
+        public decimal? Rank2Days { get; set; }
 
         /// <summary>
         /// Rank prediction score in 3 days
         /// </summary>
-        public decimal Rank3Days { get; set; }
+        public decimal? Rank3Days { get; set; }
 
         /// <summary>
         /// Rank prediction score in 5 days
         /// </summary>
-        public decimal Rank5Days { get; set; }
+        public decimal? Rank5Days { get; set; }
 
         /// <summary>
         /// Rank prediction score in 10 days
         /// </summary>
-        public decimal Rank10Days { get; set; }
+        public decimal? Rank10Days { get; set; }
 
         /// <summary>
         /// Rank prediction score in 21 days
         /// </summary>
-        public decimal Rank21Days { get; set; }
+        public decimal? Rank21Days { get; set; }
 
         /// <summary>
         /// Time passed between the date of the data and the time the data became available to us
@@ -96,19 +96,19 @@ namespace QuantConnect.DataSource
         public override BaseData Reader(SubscriptionDataConfig config, string line, DateTime date, bool isLiveMode)
         {
             var csv = line.Split(',');
-            var rank2Days = decimal.Parse(csv[2], NumberStyles.Any, CultureInfo.InvariantCulture);
+            var rank2Days = csv[2].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture));
 
             return new BrainStockRankingUniverse
             {
                 Rank2Days = rank2Days,
-                Rank3Days = decimal.Parse(csv[3], NumberStyles.Any, CultureInfo.InvariantCulture),
-                Rank5Days = decimal.Parse(csv[4], NumberStyles.Any, CultureInfo.InvariantCulture),
-                Rank10Days = decimal.Parse(csv[5], NumberStyles.Any, CultureInfo.InvariantCulture),
-                Rank21Days = decimal.Parse(csv[5], NumberStyles.Any, CultureInfo.InvariantCulture),
+                Rank3Days = csv[3].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture)),
+                Rank5Days = csv[4].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture)),
+                Rank10Days = csv[5].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture)),
+                Rank21Days = csv[6].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture)),
 
                 Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]),
                 Time = date - Period,
-                Value = rank2Days
+                Value = (decimal)rank2Days
             };
         }
 
