@@ -15,17 +15,12 @@
 */
 
 using System;
-using ProtoBuf;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using ProtoBuf.Meta;
 using Newtonsoft.Json;
-using NodaTime;
 using NUnit.Framework;
 using QuantConnect.Data;
 using QuantConnect.DataSource;
-using QuantConnect.Data.Market;
+using System.Collections.Generic;
 
 namespace QuantConnect.DataLibrary.Tests
 {
@@ -38,22 +33,22 @@ namespace QuantConnect.DataLibrary.Tests
             var factory = new BrainSentimentIndicatorUniverse();
             var line = "AAPL R735QTJ8XC9X,AAPL,869,516,0.1196,,,5101,3176,0.0976,-0.169,0.0888";
 
-            var config = new SubscriptionDataConfig(
-                typeof(BrainSentimentIndicatorUniverse),
-                Symbol.Create("AAPL", SecurityType.Base, Market.USA, baseDataType: typeof(BrainSentimentIndicatorUniverse)),
-                Resolution.Daily,
-                TimeZones.Utc,
-                TimeZones.Utc,
-                false,
-                false,
-                false,
-                true,
-                null
-            );
-
-            var date = DateTime.Today;
-            var a = factory.Reader(config, line, date, false);
-            Console.WriteLine(a.ToString());
+            var date = new DateTime(2022, 04, 21);
+            var data = (BrainSentimentIndicatorUniverse)factory.Reader(null, line, date, false);
+            Assert.AreEqual(Time.OneDay, data.Period);
+            Assert.AreEqual(date, data.EndTime);
+            Assert.AreEqual(0.1196, data.Sentiment7Days);
+            Assert.AreEqual(0.0976, data.Sentiment30Days);
+            Assert.AreEqual(516, data.SentimentalArticleMentions7Days);
+            Assert.AreEqual(3176, data.SentimentalArticleMentions30Days);
+            Assert.AreEqual(null, data.SentimentalBuzzVolume7Days);
+            Assert.AreEqual(0.0888, data.SentimentalBuzzVolume30Days);
+            Assert.AreEqual(869, data.TotalArticleMentions7Days);
+            Assert.AreEqual(5101, data.TotalArticleMentions30Days);
+            Assert.AreEqual(null, data.TotalBuzzVolume7Days);
+            Assert.AreEqual(-0.169, data.TotalBuzzVolume30Days);
+            Assert.AreEqual(0.1196, data.Price);
+            Assert.AreEqual("AAPL", data.Symbol.Value);
         }
 
         [Test]
@@ -112,7 +107,7 @@ namespace QuantConnect.DataLibrary.Tests
                     SentimentalBuzzVolume30Days = 1000m,
 
                     Symbol = new Symbol(SecurityIdentifier.Parse("A RPTMYV3VC57P"), "A"),
-                    Time = DateTime.Today
+                    Time = new DateTime(2022, 04, 21)
                 };
         }
 
@@ -134,7 +129,7 @@ namespace QuantConnect.DataLibrary.Tests
                     SentimentalBuzzVolume30Days = 1000m,
 
                     Symbol = new Symbol(SecurityIdentifier.Parse("A RPTMYV3VC57P"), "A"),
-                    Time = DateTime.Today
+                    Time = new DateTime(2022, 04, 21)
                 },
                 new BrainSentimentIndicatorUniverse
                 {
@@ -150,7 +145,7 @@ namespace QuantConnect.DataLibrary.Tests
                     SentimentalBuzzVolume30Days = 1000m,
 
                     Symbol = new Symbol(SecurityIdentifier.Parse("AA R735QTJ8XC9X"), "HWM"),
-                    Time = DateTime.Today
+                    Time = new DateTime(2022, 04, 21)
                 }
             };
         }

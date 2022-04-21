@@ -15,45 +15,36 @@
 */
 
 using System;
-using ProtoBuf;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using ProtoBuf.Meta;
 using Newtonsoft.Json;
-using NodaTime;
 using NUnit.Framework;
 using QuantConnect.Data;
 using QuantConnect.DataSource;
-using QuantConnect.Data.Market;
+using System.Collections.Generic;
 
 namespace QuantConnect.DataLibrary.Tests
 {
     [TestFixture]
     public class BrainStockRankingUniverseTests
     {
-        [Test]
-        public void ReaderTest()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ReaderTest(bool liveMode)
         {
             var factory = new BrainStockRankingUniverse();
             var line = "AAPL R735QTJ8XC9X,AAPL,1,2,,,20";
 
-            var config = new SubscriptionDataConfig(
-                typeof(BrainStockRankingUniverse),
-                Symbol.Create("AAPL", SecurityType.Base, Market.USA, baseDataType: typeof(BrainStockRankingUniverse)),
-                Resolution.Daily,
-                TimeZones.Utc,
-                TimeZones.Utc,
-                false,
-                false,
-                false,
-                true,
-                null
-            );
-
-            var date = DateTime.Today;
-            var a = factory.Reader(config, line, date, false);
-            Console.WriteLine(a.ToString());
+            var now = new DateTime(2022, 04, 21);
+            var data = (BrainStockRankingUniverse)factory.Reader(null, line, now, liveMode);
+            Assert.AreEqual(Time.OneDay, data.Period);
+            Assert.AreEqual(now, data.EndTime);
+            Assert.AreEqual(1, data.Rank2Days);
+            Assert.AreEqual(2, data.Rank3Days);
+            Assert.AreEqual(null, data.Rank5Days);
+            Assert.AreEqual(null, data.Rank10Days);
+            Assert.AreEqual(20, data.Rank21Days);
+            Assert.AreEqual(1, data.Price);
+            Assert.AreEqual("AAPL", data.Symbol.Value);
         }
 
         [Test]
@@ -107,7 +98,7 @@ namespace QuantConnect.DataLibrary.Tests
                     Rank21Days = 10000m,
 
                     Symbol = new Symbol(SecurityIdentifier.Parse("A RPTMYV3VC57P"), "A"),
-                    Time = DateTime.Today
+                    Time = new DateTime(2022, 04, 21)
                 };
         }
 
@@ -124,7 +115,7 @@ namespace QuantConnect.DataLibrary.Tests
                     Rank21Days = 10000m,
 
                     Symbol = new Symbol(SecurityIdentifier.Parse("A RPTMYV3VC57P"), "A"),
-                    Time = DateTime.Today
+                    Time = new DateTime(2022, 04, 21)
                 },
                 new BrainStockRankingUniverse
                 {
@@ -135,7 +126,7 @@ namespace QuantConnect.DataLibrary.Tests
                     Rank21Days = -10000m,
 
                     Symbol = new Symbol(SecurityIdentifier.Parse("AA R735QTJ8XC9X"), "HWM"),
-                    Time = DateTime.Today
+                    Time = new DateTime(2022, 04, 21)
                 }
             };
         }
