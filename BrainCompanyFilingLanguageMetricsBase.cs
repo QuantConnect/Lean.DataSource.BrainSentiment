@@ -107,14 +107,14 @@ namespace QuantConnect.DataSource
 
             var data = (BrainCompanyFilingLanguageMetricsBase<T>)((object)new T());
 
-            data.ReportDate = Parse.DateTimeExact(baseInfo[0], "yyyyMMdd");
+            data.ReportDate = Parse.DateTimeExact(baseInfo[0], "yyyy-MM-dd");
             data.ReportCategory = baseInfo[1];
             //Console.WriteLine($"{config.Symbol.Value}, {baseInfo[0]}, {baseInfo[1]}, {baseInfo[2]}, {line}");
             data.ReportPeriod = !string.IsNullOrWhiteSpace(baseInfo[2])
                 ? (int)Parse.Decimal(baseInfo[2])
                 : null;
             data.PreviousReportDate = !string.IsNullOrWhiteSpace(diffBaseInfo[0])
-                ? Parse.DateTimeExact(diffBaseInfo[0], "yyyyMMdd")
+                ? Parse.DateTimeExact(diffBaseInfo[0], "yyyy-MM-dd")
                 : null;
             data.PreviousReportCategory = !string.IsNullOrWhiteSpace(diffBaseInfo[1])
                 ? diffBaseInfo[1]
