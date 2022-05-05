@@ -22,3 +22,9 @@ jobs:
 
       - name: Run Tests
         run: dotnet test ./tests/bin/Release/net6.0/Tests.dll
+
+      - name: BuildDataProcessing
+        run: dotnet build ./DataProcessing/DataProcessing.csproj /p:Configuration=Release /v:quiet /p:WarningLevel=1
+
+      - name: Test File Creation
+        run: ls ./DataProcessing/bin/Release/net6.0/process.runtimeconfig.json
