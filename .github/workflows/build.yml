@@ -26,5 +26,7 @@ jobs:
       - name: BuildDataProcessing
         run: dotnet build ./DataProcessing/DataProcessing.csproj /p:Configuration=Release /v:quiet /p:WarningLevel=1
 
-      - name: Test File Creation
-        run: ls ./DataProcessing/bin/Release/net6.0/process.runtimeconfig.json
+      - name: Test CLRImports Script
+        run: |-
+            pip install clr_loader
+            python ./DataProcessing/bin/Release/net6.0/CLRImports.py
