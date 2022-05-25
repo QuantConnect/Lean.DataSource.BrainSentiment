@@ -107,7 +107,7 @@ namespace QuantConnect.DataSource
 
             data.Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]);
             data.Time = date - Period;
-            data.Value = !string.IsNullOrWhiteSpace(csv[4]) ? decimal.Parse(csv[4], NumberStyles.Any, CultureInfo.InvariantCulture) : 0m;
+            data.Value = csv[4].IfNotNullOrEmpty(0m, s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture));
 
             return data;
         }

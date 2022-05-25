@@ -121,7 +121,7 @@ namespace QuantConnect.DataSource
         public override BaseData Reader(SubscriptionDataConfig config, string line, DateTime date, bool isLiveMode)
         {
             var csv = line.Split(',');
-            var sentiment7Days = decimal.Parse(csv[4], NumberStyles.Any, CultureInfo.InvariantCulture);
+            var sentiment7Days = csv[4].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture));
 
             return new BrainSentimentIndicatorUniverse
             {
@@ -139,7 +139,7 @@ namespace QuantConnect.DataSource
 
                 Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]),
                 Time = date - Period,
-                Value = sentiment7Days
+                Value = sentiment7Days ?? 0m
             };
         }
 
