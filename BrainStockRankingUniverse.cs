@@ -108,7 +108,7 @@ namespace QuantConnect.DataSource
 
                 Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]),
                 Time = date - Period,
-                Value = (decimal)rank2Days
+                Value = rank2Days ?? 0m
             };
         }
 
