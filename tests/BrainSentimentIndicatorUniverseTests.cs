@@ -52,6 +52,33 @@ namespace QuantConnect.DataLibrary.Tests
         }
 
         [Test]
+        public void ReaderNullSentiment7DaysTest()
+        {
+            var factory = new BrainSentimentIndicatorUniverse();
+            var line = "CNCE VO2R14MRA2XX,CNCE,,,,,,22,14,0.323100,-0.945800,-0.745700";
+
+            var date = new DateTime(2022, 04, 21);
+            var data = (BrainSentimentIndicatorUniverse)factory.Reader(null, line, date, false);
+            Assert.AreEqual(Time.OneDay, data.Period);
+            Assert.AreEqual(date, data.EndTime);
+            Assert.AreEqual("CNCE", data.Symbol.Value);
+
+            // Value is 0 because 7-day Sentiment is null
+            Assert.AreEqual(0, data.Value);
+            Assert.IsNull(data.Sentiment7Days);
+            Assert.IsNull(data.SentimentalArticleMentions7Days);
+            Assert.IsNull(data.SentimentalBuzzVolume7Days);
+            Assert.IsNull(data.TotalArticleMentions7Days);
+            Assert.IsNull(data.TotalBuzzVolume7Days);
+
+            Assert.AreEqual(22, data.TotalArticleMentions30Days);
+            Assert.AreEqual(14, data.SentimentalArticleMentions30Days);
+            Assert.AreEqual(0.323100, data.Sentiment30Days);
+            Assert.AreEqual(-0.945800, data.TotalBuzzVolume30Days);
+            Assert.AreEqual(-0.745700, data.SentimentalBuzzVolume30Days);
+        }
+
+        [Test]
         public void JsonRoundTrip()
         {
             var expected = CreateNewInstance();
