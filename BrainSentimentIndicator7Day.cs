@@ -14,14 +14,11 @@
  *
 */
 
-using ProtoBuf;
-
 namespace QuantConnect.DataSource
 {
     /// <summary>
     /// Brain sentiment indicator on 7 days of news
     /// </summary>
-    [ProtoContract(SkipConstructor = true)]
     public class BrainSentimentIndicator7Day : BrainSentimentIndicatorBase<BrainSentimentIndicator7Day>
     {
         /// <summary>

@@ -16,7 +16,6 @@
 
 using System;
 using NodaTime;
-using ProtoBuf;
 using System.IO;
 using QuantConnect;
 using QuantConnect.Data;
@@ -28,7 +27,6 @@ namespace QuantConnect.DataSource
     /// <summary>
     /// Brain sentiment on news
     /// </summary>
-    [ProtoContract(SkipConstructor = true)]
     public class BrainSentimentIndicatorBase<T> : BaseData
         where T : BrainSentimentIndicatorBase<T>, new()
     {

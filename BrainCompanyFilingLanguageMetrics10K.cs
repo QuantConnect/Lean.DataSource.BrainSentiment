@@ -14,14 +14,11 @@
  *
 */
 
-using ProtoBuf;
-
 namespace QuantConnect.DataSource
 {
     /// <summary>
     /// Brain sentiment on only 10-K SEC reports
     /// </summary>
-    [ProtoContract(SkipConstructor = true)]
     public class BrainCompanyFilingLanguageMetrics10K : BrainCompanyFilingLanguageMetricsBase<BrainCompanyFilingLanguageMetrics10K>
     {
         /// <summary>
