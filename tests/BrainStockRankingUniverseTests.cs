@@ -36,8 +36,7 @@ namespace QuantConnect.DataLibrary.Tests
 
             var now = new DateTime(2022, 04, 21);
             var data = (BrainStockRankingUniverse)factory.Reader(null, line, now, liveMode);
-            Assert.AreEqual(Time.OneDay, data.Period);
-            Assert.AreEqual(now, data.EndTime);
+            Assert.AreEqual(now + TimeSpan.FromDays(1), data.EndTime);
             Assert.AreEqual(1, data.Rank2Days);
             Assert.AreEqual(2, data.Rank3Days);
             Assert.AreEqual(null, data.Rank5Days);

@@ -30,6 +30,8 @@ namespace QuantConnect.DataSource
     public class BrainCompanyFilingLanguageMetricsUniverse<T> : BaseData
         where T : BrainCompanyFilingLanguageMetricsUniverse<T>, new()
     {
+        private static readonly TimeSpan _period = TimeSpan.FromDays(1);
+        
         /// <summary>
         /// Language Metric score by report part
         /// </summary>
@@ -51,14 +53,9 @@ namespace QuantConnect.DataSource
         protected virtual string ReportType { get; set; }
 
         /// <summary>
-        /// Time passed between the date of the data and the time the data became available to us
-        /// </summary>
-        public TimeSpan Period { get; set; } = TimeSpan.FromDays(1);
-
-        /// <summary>
         /// Time the data became available
         /// </summary>
-        public override DateTime EndTime => Time + Period;
+        public override DateTime EndTime => Time + _period;
 
         /// <summary>
         /// Return the URL string source of the file. This will be converted to a stream
@@ -106,7 +103,7 @@ namespace QuantConnect.DataSource
             data.ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations = BrainCompanyFilingLanguageMetrics.Parse(csv.Skip(24).Take(11).ToList());
 
             data.Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]);
-            data.Time = date - Period;
+            data.Time = date;
             data.Value = csv[4].IfNotNullOrEmpty(0m, s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture));
 
             return data;

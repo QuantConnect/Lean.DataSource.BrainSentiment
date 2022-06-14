@@ -28,6 +28,8 @@ namespace QuantConnect.DataSource
     /// </summary>
     public class BrainStockRankingUniverse : BaseData
     {
+        private static readonly TimeSpan _period = TimeSpan.FromDays(1);
+
         /// <summary>
         /// Rank prediction score in 2 days
         /// </summary>
@@ -54,14 +56,9 @@ namespace QuantConnect.DataSource
         public decimal? Rank21Days { get; set; }
 
         /// <summary>
-        /// Time passed between the date of the data and the time the data became available to us
-        /// </summary>
-        public TimeSpan Period { get; set; } = TimeSpan.FromDays(1);
-
-        /// <summary>
         /// Time the data became available
         /// </summary>
-        public override DateTime EndTime => Time + Period;
+        public override DateTime EndTime => Time + _period;
 
         /// <summary>
         /// Return the URL string source of the file. This will be converted to a stream
@@ -107,7 +104,7 @@ namespace QuantConnect.DataSource
                 Rank21Days = csv[6].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture)),
 
                 Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]),
-                Time = date - Period,
+                Time = date,
                 Value = rank2Days ?? 0m
             };
         }

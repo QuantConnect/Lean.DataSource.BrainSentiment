@@ -35,8 +35,7 @@ namespace QuantConnect.DataLibrary.Tests
 
             var date = new DateTime(2022, 04, 21);
             var data = (BrainSentimentIndicatorUniverse)factory.Reader(null, line, date, false);
-            Assert.AreEqual(Time.OneDay, data.Period);
-            Assert.AreEqual(date, data.EndTime);
+            Assert.AreEqual(date + TimeSpan.FromDays(1), data.EndTime);
             Assert.AreEqual(0.1196, data.Sentiment7Days);
             Assert.AreEqual(0.0976, data.Sentiment30Days);
             Assert.AreEqual(516, data.SentimentalArticleMentions7Days);
@@ -59,8 +58,7 @@ namespace QuantConnect.DataLibrary.Tests
 
             var date = new DateTime(2022, 04, 21);
             var data = (BrainSentimentIndicatorUniverse)factory.Reader(null, line, date, false);
-            Assert.AreEqual(Time.OneDay, data.Period);
-            Assert.AreEqual(date, data.EndTime);
+            Assert.AreEqual(date + TimeSpan.FromDays(1), data.EndTime);
             Assert.AreEqual("CNCE", data.Symbol.Value);
 
             // Value is 0 because 7-day Sentiment is null

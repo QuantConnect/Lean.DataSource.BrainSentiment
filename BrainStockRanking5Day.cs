@@ -14,14 +14,11 @@
  *
 */
 
-using ProtoBuf;
-
 namespace QuantConnect.DataSource
 {
     /// <summary>
     /// Brain universe stock rankings on expected returns in the next 5 days
     /// </summary>
-    [ProtoContract(SkipConstructor = true)]
     public class BrainStockRanking5Day : BrainStockRankingBase<BrainStockRanking5Day>
     {
         /// <summary>

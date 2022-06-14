@@ -19,7 +19,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NodaTime;
-using ProtoBuf;
 using QuantConnect;
 using QuantConnect.Data;
 
@@ -28,7 +27,6 @@ namespace QuantConnect.DataSource
     /// <summary>
     /// Brain sentiment on 10-K/10-Q SEC reports
     /// </summary>
-    [ProtoContract(SkipConstructor = true)]
     public class BrainCompanyFilingLanguageMetricsBase<T> : BaseData
         where T : BrainCompanyFilingLanguageMetricsBase<T>, new()
     {
