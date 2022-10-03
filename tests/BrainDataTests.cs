@@ -100,7 +100,7 @@ namespace QuantConnect.DataLibrary.Tests
 
         private BaseData CreateNewInstance()
         {
-            return new BrainStockRanking30Day
+            return new BrainStockRanking21Day
             {
                 Symbol = Symbol.Empty,
                 Time = DateTime.Today,
