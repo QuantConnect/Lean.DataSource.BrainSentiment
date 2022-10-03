@@ -28,5 +28,5 @@ jobs:
 
       - name: Test CLRImports Script
         run: |-
-            pip install clr_loader
+            pip install --no-cache-dir clr-loader==0.1.6
             python ./DataProcessing/bin/Release/net6.0/CLRImports.py

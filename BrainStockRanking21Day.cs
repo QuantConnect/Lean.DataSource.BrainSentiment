@@ -19,13 +19,13 @@ namespace QuantConnect.DataSource
     /// <summary>
     /// Brain universe stock rankings on expected returns in the next 30 days
     /// </summary>
-    public class BrainStockRanking30Day : BrainStockRankingBase<BrainStockRanking30Day>
+    public class BrainStockRanking21Day : BrainStockRankingBase<BrainStockRanking21Day>
     {
         /// <summary>
         /// Data source ID
         /// </summary>
         public static int DataSourceId { get; } = 2029;
 
-        protected override int LookbackDays { get; set; } = 30;
+        protected override int LookbackDays { get; set; } = 21;
     }
 }
