@@ -174,7 +174,8 @@ class BrainProcessor:
         sid = self.figi_to_sid(figi)
         if sid is not None:
             return self.map_sid(sid, trading_date)
-
+        if type(ticker) == float:
+            return None
         return self.map_ticker(ticker, trading_date)
 
     def map_ticker(self, ticker, trading_date):
