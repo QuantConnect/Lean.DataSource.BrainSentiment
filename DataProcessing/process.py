@@ -211,7 +211,7 @@ class BrainProcessor:
 
         db_connection = sqlalchemy.create_engine(self.db_connection_info)
         with db_connection.connect() as connection:
-            df = pd.read_sql(f'SELECT figi, sid, ticker FROM {self.db_security_table} ORDER BY id DESC', con=connection)
+            df = pd.DataFrame(connection.execute(sqlalchemy.text(f'SELECT figi, sid, ticker FROM {self.db_security_table} ORDER BY id DESC')))
 
             if df.empty:
                 print('Database contains no FIGI/ticker entries')
