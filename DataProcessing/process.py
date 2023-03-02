@@ -210,30 +210,31 @@ class BrainProcessor:
         self.figi_map = {}
 
         db_connection = sqlalchemy.create_engine(self.db_connection_info)
-        df = pd.read_sql(f'SELECT figi, sid, ticker FROM {self.db_security_table} ORDER BY id DESC', con=db_connection)
+        with db_connection.connect() as connection:
+            df = pd.read_sql(f'SELECT figi, sid, ticker FROM {self.db_security_table} ORDER BY id DESC', con=connection)
 
-        if df.empty:
-            print('Database contains no FIGI/ticker entries')
-            return False
+            if df.empty:
+                print('Database contains no FIGI/ticker entries')
+                return False
 
-        df = df.drop_duplicates(subset='figi')
+            df = df.drop_duplicates(subset='figi')
 
-        for _, secdef in df.iterrows():
-            figi = secdef['figi']
-            sid = secdef['sid']
+            for _, secdef in df.iterrows():
+                figi = secdef['figi']
+                sid = secdef['sid']
 
-            if not figi or figi.isspace():
-                continue
+                if not figi or figi.isspace():
+                    continue
 
-            if not sid or sid.isspace():
-                continue
+                if not sid or sid.isspace():
+                    continue
 
-            try:
-                self.figi_map[figi] = SecurityIdentifier.Parse(sid)
-            except:
-                print(f'Failed to parse SID: {sid} for Security: {figi}')
+                try:
+                    self.figi_map[figi] = SecurityIdentifier.Parse(sid)
+                except:
+                    print(f'Failed to parse SID: {sid} for Security: {figi}')
 
-        return any(self.figi_map)
+            return any(self.figi_map)
 
     def parse_raw(self, file, category, date, lookback_days=None):
         columns = list(self.category_parsing_columns[category]) + ['COMPOSITE_FIGI']
