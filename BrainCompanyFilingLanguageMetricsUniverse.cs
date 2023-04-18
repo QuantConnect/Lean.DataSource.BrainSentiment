@@ -103,7 +103,7 @@ namespace QuantConnect.DataSource
             data.ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations = BrainCompanyFilingLanguageMetrics.Parse(csv.Skip(24).Take(11).ToList());
 
             data.Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]);
-            data.Time = date;
+            data.Time = date.AddHours(-12);
             data.Value = csv[4].IfNotNullOrEmpty(0m, s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture));
 
             return data;
