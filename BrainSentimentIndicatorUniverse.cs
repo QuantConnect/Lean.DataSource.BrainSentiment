@@ -135,6 +135,7 @@ namespace QuantConnect.DataSource
                 SentimentalBuzzVolume30Days = csv[11].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture)),
 
                 Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]),
+                // subtract 12 hours to match the base type data time
                 Time = date.AddHours(-12),
                 Value = sentiment7Days ?? 0m
             };
