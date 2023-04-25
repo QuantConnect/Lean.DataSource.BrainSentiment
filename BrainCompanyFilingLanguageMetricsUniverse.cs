@@ -103,7 +103,9 @@ namespace QuantConnect.DataSource
             data.ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations = BrainCompanyFilingLanguageMetrics.Parse(csv.Skip(24).Take(11).ToList());
 
             data.Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]);
-            data.Time = date;
+            // We need to convert the time since the date is in UTC, and AddUniverse sets the ExchangeTimeZone to TimeZones.NewYork
+            // Subtract 12 hours to match the BrainCompanyFilingLanguageMetricsBase EndTime
+            data.Time = date.ConvertFromUtc(config.ExchangeTimeZone).AddHours(-12);
             data.Value = csv[4].IfNotNullOrEmpty(0m, s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture));
 
             return data;
@@ -150,6 +152,7 @@ namespace QuantConnect.DataSource
         /// <returns>The <see cref="T:NodaTime.DateTimeZone" /> of this data type</returns>
         public override DateTimeZone DataTimeZone()
         {
+            // TODO: AddUniverse does not take this into account
             return TimeZones.Utc;
         }
     }

@@ -34,9 +34,10 @@ namespace QuantConnect.DataLibrary.Tests
             var factory = new BrainStockRankingUniverse();
             var line = "AAPL R735QTJ8XC9X,AAPL,1,2,,,20";
 
+            var config = CreateSubscriptionDataConfig();
             var now = new DateTime(2022, 04, 21);
-            var data = (BrainStockRankingUniverse)factory.Reader(null, line, now, liveMode);
-            Assert.AreEqual(now + TimeSpan.FromDays(1), data.EndTime);
+            var data = (BrainStockRankingUniverse)factory.Reader(config, line, now, liveMode);
+            Assert.AreEqual(now.ConvertFromUtc(config.ExchangeTimeZone) + TimeSpan.FromHours(12), data.EndTime);
             Assert.AreEqual(1, data.Rank2Days);
             Assert.AreEqual(2, data.Rank3Days);
             Assert.AreEqual(null, data.Rank5Days);
@@ -129,5 +130,15 @@ namespace QuantConnect.DataLibrary.Tests
                 }
             };
         }
+
+        private SubscriptionDataConfig CreateSubscriptionDataConfig() => new(
+            typeof(BrainStockRankingUniverse),
+            Symbol.None,
+            Resolution.Daily,
+            TimeZones.NewYork,
+            TimeZones.NewYork,
+            true,
+            true,
+            false);
     }
 }

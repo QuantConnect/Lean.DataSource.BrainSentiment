@@ -30,6 +30,8 @@
     <None Remove="BrainCompanyFilingLanguageMetricsUniverseSelectionAlgorithm.cs" />
     <Compile Remove="BrainSentimentIndicatorUniverseSelectionAlgorithm.cs" />
     <None Remove="BrainSentimentIndicatorUniverseSelectionAlgorithm.cs" />
+    <Compile Remove="BrainSentimentRegressionAlgorithm.cs" />
+    <None Remove="BrainSentimentRegressionAlgorithm.cs" />
     <Compile Remove="BrainStockRankingUniverseSelectionAlgorithm.cs" />
     <None Remove="BrainStockRankingUniverseSelectionAlgorithm.cs" />
     <None Remove=".gitignore" />
