@@ -104,7 +104,7 @@ namespace QuantConnect.DataSource
 
             data.Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]);
             // subtract 12 hours to match the base type data time
-            data.Time = date.AddHours(-12);
+            data.Time = date.ConvertFromUtc(DataTimeZone()).AddHours(-12);
             data.Value = csv[4].IfNotNullOrEmpty(0m, s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture));
 
             return data;
@@ -151,7 +151,7 @@ namespace QuantConnect.DataSource
         /// <returns>The <see cref="T:NodaTime.DateTimeZone" /> of this data type</returns>
         public override DateTimeZone DataTimeZone()
         {
-            return TimeZones.Utc;
+            return TimeZones.NewYork;
         }
     }
 }
