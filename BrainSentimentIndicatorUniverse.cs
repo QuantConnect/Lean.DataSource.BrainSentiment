@@ -119,6 +119,7 @@ namespace QuantConnect.DataSource
         {
             var csv = line.Split(',');
             var sentiment7Days = csv[4].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture));
+            TimeZoneInfo easternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
 
             return new BrainSentimentIndicatorUniverse
             {
@@ -136,7 +137,7 @@ namespace QuantConnect.DataSource
 
                 Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]),
                 // subtract 12 hours to match the base type data time
-                Time = date.AddHours(-12),
+                Time = TimeZoneInfo.ConvertTimeFromUtc(date, easternZone).AddHours(-12),
                 Value = sentiment7Days ?? 0m
             };
         }
