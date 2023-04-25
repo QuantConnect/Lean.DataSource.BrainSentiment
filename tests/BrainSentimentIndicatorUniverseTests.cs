@@ -33,9 +33,10 @@ namespace QuantConnect.DataLibrary.Tests
             var factory = new BrainSentimentIndicatorUniverse();
             var line = "AAPL R735QTJ8XC9X,AAPL,869,516,0.1196,,,5101,3176,0.0976,-0.169,0.0888";
 
+            var config = CreateSubscriptionDataConfig();
             var date = new DateTime(2022, 04, 21);
-            var data = (BrainSentimentIndicatorUniverse)factory.Reader(null, line, date, false);
-            Assert.AreEqual(date.ConvertFromUtc(data.DataTimeZone()) + TimeSpan.FromHours(12), data.EndTime);
+            var data = (BrainSentimentIndicatorUniverse)factory.Reader(config, line, date, false);
+            Assert.AreEqual(date.ConvertFromUtc(config.ExchangeTimeZone) + TimeSpan.FromHours(12), data.EndTime);
             Assert.AreEqual(0.1196, data.Sentiment7Days);
             Assert.AreEqual(0.0976, data.Sentiment30Days);
             Assert.AreEqual(516, data.SentimentalArticleMentions7Days);
@@ -56,9 +57,10 @@ namespace QuantConnect.DataLibrary.Tests
             var factory = new BrainSentimentIndicatorUniverse();
             var line = "CNCE VO2R14MRA2XX,CNCE,,,,,,22,14,0.323100,-0.945800,-0.745700";
 
+            var config = CreateSubscriptionDataConfig();
             var date = new DateTime(2022, 04, 21);
-            var data = (BrainSentimentIndicatorUniverse)factory.Reader(null, line, date, false);
-            Assert.AreEqual(date.ConvertFromUtc(data.DataTimeZone()) + TimeSpan.FromHours(12), data.EndTime);
+            var data = (BrainSentimentIndicatorUniverse)factory.Reader(config, line, date, false);
+            Assert.AreEqual(date.ConvertFromUtc(config.ExchangeTimeZone) + TimeSpan.FromHours(12), data.EndTime);
             Assert.AreEqual("CNCE", data.Symbol.Value);
 
             // Value is 0 because 7-day Sentiment is null
@@ -174,5 +176,15 @@ namespace QuantConnect.DataLibrary.Tests
                 }
             };
         }
+
+        private SubscriptionDataConfig CreateSubscriptionDataConfig() => new(
+            typeof(BrainSentimentIndicatorUniverse),
+            Symbol.None,
+            Resolution.Daily,
+            TimeZones.NewYork,
+            TimeZones.NewYork,
+            true,
+            true,
+            false);
     }
 }

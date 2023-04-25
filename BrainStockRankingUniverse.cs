@@ -104,9 +104,9 @@ namespace QuantConnect.DataSource
                 Rank21Days = csv[6].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture)),
 
                 Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]),
-                // We need to convert the time since the date is in UTC, and AddUniverse sets the DateTimeZone to TimeZones.NewYork
+                // We need to convert the time since the date is in UTC, and AddUniverse sets the ExchangeTimeZone to TimeZones.NewYork
                 // Subtract 12 hours to match the BrainStockRankingBase EndTime
-                Time = date.ConvertFromUtc(config.DataTimeZone).AddHours(-12),
+                Time = date.ConvertFromUtc(config.ExchangeTimeZone).AddHours(-12),
                 Value = rank2Days ?? 0m
             };
         }

@@ -103,9 +103,9 @@ namespace QuantConnect.DataSource
             data.ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations = BrainCompanyFilingLanguageMetrics.Parse(csv.Skip(24).Take(11).ToList());
 
             data.Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]);
-            // We need to convert the time since the date is in UTC, and AddUniverse sets the DateTimeZone to TimeZones.NewYork
+            // We need to convert the time since the date is in UTC, and AddUniverse sets the ExchangeTimeZone to TimeZones.NewYork
             // Subtract 12 hours to match the BrainCompanyFilingLanguageMetricsBase EndTime
-            data.Time = date.ConvertFromUtc(config.DataTimeZone).AddHours(-12);
+            data.Time = date.ConvertFromUtc(config.ExchangeTimeZone).AddHours(-12);
             data.Value = csv[4].IfNotNullOrEmpty(0m, s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture));
 
             return data;
