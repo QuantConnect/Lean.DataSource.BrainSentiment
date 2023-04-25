@@ -135,8 +135,9 @@ namespace QuantConnect.DataSource
                 SentimentalBuzzVolume30Days = csv[11].IfNotNullOrEmpty<decimal?>(s => decimal.Parse(s, NumberStyles.Any, CultureInfo.InvariantCulture)),
 
                 Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]),
-                // subtract 12 hours to match the base type data time
-                Time = date.ConvertFromUtc(DataTimeZone()).AddHours(-12),
+                // We need to convert the time since the date is in UTC, and AddUniverse sets the DateTimeZone to TimeZones.NewYork
+                // Subtract 12 hours to match the BrainSentimentIndicatorBase EndTime
+                Time = date.ConvertFromUtc(config.DataTimeZone).AddHours(-12),
                 Value = sentiment7Days ?? 0m
             };
         }
@@ -181,7 +182,8 @@ namespace QuantConnect.DataSource
         /// <returns>The <see cref="T:NodaTime.DateTimeZone" /> of this data type</returns>
         public override DateTimeZone DataTimeZone()
         {
-            return TimeZones.NewYork;
+            // TODO: AddUniverse does not take this into account
+            return TimeZones.Utc;
         }
     }
 }
