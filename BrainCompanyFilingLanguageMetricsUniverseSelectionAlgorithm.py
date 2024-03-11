@@ -13,7 +13,7 @@
 
 from AlgorithmImports import *
 
-class BrainCompanyFilingLanguageMetricsUniverseAlgorithm(QCAlgorithm): 
+class BrainCompanyFilingLanguageMetricsUniverseAlgorithm(QCAlgorithm):
     def Initialize(self):
         # Data ADDED via universe selection is added with Daily resolution.
         self.UniverseSettings.Resolution = Resolution.Daily
@@ -23,7 +23,15 @@ class BrainCompanyFilingLanguageMetricsUniverseAlgorithm(QCAlgorithm):
         self.SetCash(100000)
 
         # add a custom universe data source (defaults to usa-equity)
-        self.AddUniverse(BrainCompanyFilingLanguageMetricsUniverseAll, "BrainCompanyFilingLanguageMetricsUniverseAll", Resolution.Daily, self.UniverseSelection)
+        universe = self.AddUniverse(BrainCompanyFilingLanguageMetricsUniverseAll, self.UniverseSelection)
+
+        history = self.History(universe, TimeSpan(1, 0, 0, 0))
+        if len(history) != 1:
+            raise ValueError(f"Unexpected history count {len(history)}! Expected 1")
+
+        for dataForDate in history:
+            if len(dataForDate) < 100:
+                raise ValueError(f"Unexpected historical universe data!")
 
     def UniverseSelection(self, data):
         for datum in data:
@@ -42,8 +50,9 @@ class BrainCompanyFilingLanguageMetricsUniverseAlgorithm(QCAlgorithm):
 
         # define our selection criteria
         return [d.Symbol for d in data \
-                    if d.ReportSentiment.Sentiment > 0 \
-                    and d.ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations.Sentiment > 0]
+                    if d.ReportSentiment.Sentiment and d.ReportSentiment.Sentiment > 0 \
+                    and d.ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations.Sentiment and \
+                    d.ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations.Sentiment > 0]
 
     def OnSecuritiesChanged(self, changes):
         self.Log(changes.ToString())

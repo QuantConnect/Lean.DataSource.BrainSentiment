@@ -21,13 +21,14 @@ using System.Globalization;
 using System.IO;
 using NodaTime;
 using QuantConnect.Data;
+using QuantConnect.Data.UniverseSelection;
 
 namespace QuantConnect.DataSource
 {
     /// <summary>
     /// Universe Selection helper class for BrainCompanyFilingLanguageMetrics dataset
     /// </summary>
-    public class BrainCompanyFilingLanguageMetricsUniverse<T> : BaseData
+    public class BrainCompanyFilingLanguageMetricsUniverse<T> : BaseDataCollection
         where T : BrainCompanyFilingLanguageMetricsUniverse<T>, new()
     {
         private static readonly TimeSpan _period = TimeSpan.FromDays(1);
@@ -75,7 +76,8 @@ namespace QuantConnect.DataSource
                     "universe",
                     $"{date:yyyyMMdd}.csv"
                 ),
-                SubscriptionTransportMedium.LocalFile
+                SubscriptionTransportMedium.LocalFile,
+                FileFormat.FoldingCollection
             );
         }
 
@@ -152,7 +154,6 @@ namespace QuantConnect.DataSource
         /// <returns>The <see cref="T:NodaTime.DateTimeZone" /> of this data type</returns>
         public override DateTimeZone DataTimeZone()
         {
-            // TODO: AddUniverse does not take this into account
             return TimeZones.Utc;
         }
     }

@@ -34,18 +34,32 @@ namespace QuantConnect.Algorithm.CSharp
             SetCash(100000);
 
             // add a custom universe data source (defaults to usa-equity)
-            AddUniverse<BrainStockRankingUniverse>("BrainStockRankingUniverse", Resolution.Daily, data =>
+            var universe = AddUniverse<BrainStockRankingUniverse>(data =>
             {
-                foreach (var datum in data)
+                foreach (BrainStockRankingUniverse datum in data)
                 {
                     Log($"{datum.Symbol},{datum.Rank2Days},{datum.Rank3Days},{datum.Rank5Days},{datum.Rank10Days},{datum.Rank21Days}");
                 }
 
                 // define our selection criteria
-                return from d in data 
-                    where d.Rank2Days > 0m && d.Rank3Days > 0m  && d.Rank5Days > 0m
-                    select d.Symbol;
+                return from BrainStockRankingUniverse d in data
+                       where d.Rank2Days > 0m && d.Rank3Days > 0m && d.Rank5Days > 0m
+                       select d.Symbol;
             });
+
+            var history = History(universe, 1).ToList();
+            if (history.Count != 1)
+            {
+                throw new System.Exception($"Unexpected historical data count!");
+            }
+            foreach (var dataForDate in history)
+            {
+                var coarseData = dataForDate.ToList();
+                if (coarseData.Count < 500)
+                {
+                    throw new System.Exception($"Unexpected historical universe data!");
+                }
+            }
         }
         
         public override void OnSecuritiesChanged(SecurityChanges changes)
