@@ -14,6 +14,8 @@
  *
 */
 
+using QuantConnect.Data;
+
 namespace QuantConnect.DataSource
 {
     /// <summary>
@@ -22,5 +24,23 @@ namespace QuantConnect.DataSource
     public class BrainCompanyFilingLanguageMetricsUniverseAll : BrainCompanyFilingLanguageMetricsUniverse<BrainCompanyFilingLanguageMetricsUniverseAll>
     {
         protected override string ReportType { get; set; } = "all";
+
+        /// <summary>
+        /// Clones this instance
+        /// </summary>
+        public override BaseData Clone()
+        {
+            return new BrainCompanyFilingLanguageMetricsUniverseAll()
+            {
+                Symbol = Symbol,
+                Time = Time,
+                Data = Data,
+                Value = Value,
+
+                ReportSentiment = ReportSentiment,
+                RiskFactorsStatementSentiment = RiskFactorsStatementSentiment,
+                ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations = ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations
+            };
+        }
     }
 }

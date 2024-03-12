@@ -20,13 +20,14 @@ using System.Globalization;
 using System.IO;
 using NodaTime;
 using QuantConnect.Data;
+using QuantConnect.Data.UniverseSelection;
 
 namespace QuantConnect.DataSource
 {
     /// <summary>
     /// Universe Selection helper class for Brain ML Stock Ranking dataset
     /// </summary>
-    public class BrainStockRankingUniverse : BaseData
+    public class BrainStockRankingUniverse : BaseDataCollection
     {
         private static readonly TimeSpan _period = TimeSpan.FromDays(1);
 
@@ -78,7 +79,8 @@ namespace QuantConnect.DataSource
                     "universe",
                     $"{date:yyyyMMdd}.csv"
                 ),
-                SubscriptionTransportMedium.LocalFile
+                SubscriptionTransportMedium.LocalFile,
+                FileFormat.FoldingCollection
             );
         }
 
@@ -120,6 +122,26 @@ namespace QuantConnect.DataSource
         }
 
         /// <summary>
+        /// Clones this instance
+        /// </summary>
+        public override BaseData Clone()
+        {
+            return new BrainStockRankingUniverse()
+            {
+                Symbol = Symbol,
+                Time = Time,
+                Data = Data,
+                Value = Value,
+
+                Rank2Days = Rank2Days,
+                Rank3Days = Rank3Days,
+                Rank5Days = Rank5Days,
+                Rank10Days = Rank10Days,
+                Rank21Days = Rank21Days
+            };
+        }
+
+        /// <summary>
         /// Gets the default resolution for this data and security type
         /// </summary>
         public override Resolution DefaultResolution()
@@ -141,7 +163,6 @@ namespace QuantConnect.DataSource
         /// <returns>The <see cref="T:NodaTime.DateTimeZone" /> of this data type</returns>
         public override DateTimeZone DataTimeZone()
         {
-            // TODO: AddUniverse does not take this into account
             return TimeZones.Utc;
         }
     }

@@ -13,7 +13,7 @@
 
 from AlgorithmImports import *
 
-class BrainStockRankingUniverseAlgorithm(QCAlgorithm): 
+class BrainStockRankingUniverseAlgorithm(QCAlgorithm):
     def Initialize(self):
         # Data ADDED via universe selection is added with Daily resolution.
         self.UniverseSettings.Resolution = Resolution.Daily
@@ -23,7 +23,15 @@ class BrainStockRankingUniverseAlgorithm(QCAlgorithm):
         self.SetCash(100000)
 
         # add a custom universe data source (defaults to usa-equity)
-        self.AddUniverse(BrainStockRankingUniverse, "BrainStockRankingUniverse", Resolution.Daily, self.UniverseSelection)
+        universe = self.AddUniverse(BrainStockRankingUniverse, self.UniverseSelection)
+
+        history = self.History(universe, TimeSpan(1, 0, 0, 0))
+        if len(history) != 1:
+            raise ValueError(f"Unexpected history count {len(history)}! Expected 1")
+
+        for dataForDate in history:
+            if len(dataForDate) < 500:
+                raise ValueError(f"Unexpected historical universe data!")
 
     def UniverseSelection(self, data):
         for datum in data:
