@@ -1,6 +1,5 @@
 import os
 import boto3
-import sqlalchemy
 import sys
 
 from pathlib import Path
@@ -78,12 +77,13 @@ OUTPUT_DIRECTORY_NAMES = {
 
 class BrainProcessor:
     def __init__(self, files=None):
-        self.map_file_provider = LocalZipMapFileProvider()
-        self.map_file_provider.Initialize(DefaultDataProvider())
+        dataProvider = Composer.Instance.GetExportedValueByTypeName[IDataProvider](Config.Get('data-provider', 'DefaultDataProvider'))
+        self.map_file_provider = Composer.Instance.GetExportedValueByTypeName[IMapFileProvider](Config.Get('map-file-provider', 'LocalZipMapFileProvider'))
+        self.map_file_provider.Initialize(dataProvider)
+        self.symbol_resolver = SecurityDefinitionSymbolResolver()
         
         if files is not None:
             self.files = files
-            self.figi_map = None
             self.map_file_resolver = self.map_file_provider.Get(AuxiliaryDataKey.EquityUsa)
 
             self.category_parsing_columns = {
@@ -152,28 +152,13 @@ class BrainProcessor:
             self.category_parsing_columns[REPORT_10K_CATEGORY] = list(self.category_parsing_columns[REPORT_ALL_CATEGORY])
             self.category_parsing_columns[REPORT_DIFF_10K_CATEGORY] = list(self.category_parsing_columns[REPORT_DIFF_ALL_CATEGORY])
 
-            self.db_name = os.environ.get('DB_NAME')
-            self.db_host = os.environ.get('DB_HOST')
-            self.db_port = os.environ.get('DB_PORT', 3306)
-            self.db_user = os.environ.get('DB_USER')
-            self.db_pass = os.environ.get('DB_PASS')
-            self.db_security_table = os.environ['DB_SECDEF_TABLE']
-
-            self.has_db_connection = self.db_name is not None and self.db_host is not None and self.db_user is not None
-            self.db_connection_info = None
-
-            if self.has_db_connection:
-                self.db_connection_info = f'mysql+pymysql://{self.db_user}'
-                self.db_connection_info += f':{self.db_pass}' if self.db_pass is not None else ''
-                self.db_connection_info += f'@{self.db_host}:{self.db_port}/{self.db_name}'
-
     def filter_files_by_category(self, category):
         return [(file_path, lookback_days, date) for (file_path, lookback_days, cat, date) in self.files if cat == category]
 
     def figi_to_mapped_ticker(self, ticker, figi, trading_date):
-        sid = self.figi_to_sid(figi)
-        if sid is not None:
-            return self.map_sid(sid, trading_date)
+        symbol = self.symbol_resolver.CompositeFIGI(figi, trading_date)
+        if symbol is not None:
+            return symbol
         if type(ticker) == float:
             return None
         return self.map_ticker(ticker, trading_date)
@@ -184,57 +169,6 @@ class BrainProcessor:
 
         map_file = self.map_file_resolver.ResolveMapFile(ticker, datetime.now())
         return map_file.GetMappedSymbol(trading_date, None)
-
-    def map_sid(self, sid, trading_date):
-        if sid is None:
-            return None
-
-        map_file = self.map_file_resolver.ResolveMapFile(sid.Symbol, sid.Date)
-        return map_file.GetMappedSymbol(trading_date, None)
-
-    def figi_to_sid(self, figi):
-        if not self.has_db_connection:
-            return None
-
-        if (self.figi_map is None or not any(self.figi_map)) and not self.try_create_figi_map():
-            print('Failed to create FIGI lookup table')
-            return None
-
-        return self.figi_map.get(figi)
-
-    def try_create_figi_map(self):
-        if not self.has_db_connection:
-            print('No connection to the security definition database')
-            return False
-
-        self.figi_map = {}
-
-        db_connection = sqlalchemy.create_engine(self.db_connection_info)
-        with db_connection.connect() as connection:
-            df = pd.DataFrame(connection.execute(sqlalchemy.text(f'SELECT figi, sid, ticker FROM {self.db_security_table} ORDER BY id DESC')))
-
-            if df.empty:
-                print('Database contains no FIGI/ticker entries')
-                return False
-
-            df = df.drop_duplicates(subset='figi')
-
-            for _, secdef in df.iterrows():
-                figi = secdef['figi']
-                sid = secdef['sid']
-
-                if not figi or figi.isspace():
-                    continue
-
-                if not sid or sid.isspace():
-                    continue
-
-                try:
-                    self.figi_map[figi] = SecurityIdentifier.Parse(sid)
-                except:
-                    print(f'Failed to parse SID: {sid} for Security: {figi}')
-
-            return any(self.figi_map)
 
     def parse_raw(self, file, category, date, lookback_days=None):
         columns = list(self.category_parsing_columns[category]) + ['COMPOSITE_FIGI']
@@ -317,7 +251,7 @@ class BrainProcessor:
                 groupby_columns.append('lookback_days')
 
             for index, df_ticker in df.groupby(groupby_columns):
-                ticker = index[0] if has_lookback else index
+                ticker = index[0] if isinstance(index, tuple) else index
                 directory_name = OUTPUT_DIRECTORY_NAMES[category]
                 output_path = OUTPUT_DATA_PATH / directory_name
                 lookback_days = None
