@@ -252,6 +252,7 @@ class BrainProcessor:
 
             for index, df_ticker in df.groupby(groupby_columns):
                 ticker = index[0] if isinstance(index, tuple) else index
+                ticker = ticker.Value if isinstance(ticker, Symbol) else ticker
                 directory_name = OUTPUT_DIRECTORY_NAMES[category]
                 output_path = OUTPUT_DATA_PATH / directory_name
                 lookback_days = None
