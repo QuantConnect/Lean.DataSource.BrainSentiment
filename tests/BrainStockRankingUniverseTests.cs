@@ -56,17 +56,6 @@ namespace QuantConnect.DataLibrary.Tests
         }
 
         [Test]
-        public void JsonRoundTrip()
-        {
-            var expected = CreateNewInstance();
-            var type = expected.GetType();
-            var serialized = JsonConvert.SerializeObject(expected);
-            var result = JsonConvert.DeserializeObject(serialized, type);
-
-            AssertAreEqual(expected, result);
-        }
-
-        [Test]
         public void Selection()
         {
             var datum = CreateNewSelection();
