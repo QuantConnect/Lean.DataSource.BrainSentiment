@@ -21,12 +21,20 @@ using NUnit.Framework;
 using QuantConnect.Data;
 using QuantConnect.DataSource;
 using System.Collections.Generic;
+using QuantConnect.Data.Auxiliary;
+using QuantConnect.Interfaces;
+using QuantConnect.Util;
 
 namespace QuantConnect.DataLibrary.Tests
 {
     [TestFixture]
     public class BrainSentimentIndicatorUniverseTests
     {
+        [OneTimeSetUp]
+        public void Setup()
+        {
+            Composer.Instance.GetExportedValueByTypeName<IMapFileProvider>(Configuration.Config.Get("map-file-provider", typeof(LocalDiskMapFileProvider).Name));
+        }
         [Test]
         public void ReaderTest()
         {
