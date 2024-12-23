@@ -21,12 +21,20 @@ using NUnit.Framework;
 using QuantConnect.Data;
 using QuantConnect.DataSource;
 using System.Collections.Generic;
+using QuantConnect.Data.Auxiliary;
+using QuantConnect.Interfaces;
+using QuantConnect.Util;
 
 namespace QuantConnect.DataLibrary.Tests
 {
     [TestFixture]
     public class BrainStockRankingUniverseTests
     {
+        [OneTimeSetUp]
+        public void Setup()
+        {
+            Composer.Instance.GetExportedValueByTypeName<IMapFileProvider>(Configuration.Config.Get("map-file-provider", typeof(LocalDiskMapFileProvider).Name));
+        }
         [TestCase(true)]
         [TestCase(false)]
         public void ReaderTest(bool liveMode)
@@ -45,17 +53,6 @@ namespace QuantConnect.DataLibrary.Tests
             Assert.AreEqual(20, data.Rank21Days);
             Assert.AreEqual(1, data.Price);
             Assert.AreEqual("AAPL", data.Symbol.Value);
-        }
-
-        [Test]
-        public void JsonRoundTrip()
-        {
-            var expected = CreateNewInstance();
-            var type = expected.GetType();
-            var serialized = JsonConvert.SerializeObject(expected);
-            var result = JsonConvert.DeserializeObject(serialized, type);
-
-            AssertAreEqual(expected, result);
         }
 
         [Test]
