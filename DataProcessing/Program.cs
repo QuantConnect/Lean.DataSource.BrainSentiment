@@ -14,22 +14,102 @@
 */
 
 using System;
+using System.Globalization;
+using QuantConnect.DataSource;
 
 namespace QuantConnect.DataProcessing
 {
     /// <summary>
-    /// Entrypoint for the data downloader/converter
+    /// CLI entrypoint for Brain dataset processing.
+    /// Supports:
+    ///   --dataset BLMECT
+    ///   --dataset BWPV
+    ///   --date YYYYMMDD
     /// </summary>
-    public class Program
+    public static class Program
     {
-        /// <summary>
-        /// Entrypoint of the program
-        /// </summary>
-        /// <returns>Exit code. 0 equals successful, and any other value indicates the downloader/converter failed.</returns>
-        public static void Main()
+        public static void Main(string[] args)
         {
-            // The downloader/converter was successful
-            Environment.Exit(0);
+            if (args.Length == 0)
+            {
+                PrintHelp();
+                return;
+            }
+
+            string dataset = null;
+            DateTime date = DateTime.MinValue;
+
+            for (int i = 0; i < args.Length; i++)
+            {
+                switch (args[i].ToLowerInvariant())
+                {
+                    case "--dataset":
+                        dataset = args[++i];
+                        break;
+
+                    case "--date":
+                        string ds = args[++i];
+                        date = DateTime.ParseExact(ds, "yyyyMMdd", CultureInfo.InvariantCulture);
+                        break;
+
+                    case "--help":
+                    case "-h":
+                        PrintHelp();
+                        return;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(dataset))
+            {
+                Console.WriteLine("[ERROR] Missing --dataset argument");
+                PrintHelp();
+                return;
+            }
+
+            if (date == DateTime.MinValue)
+            {
+                Console.WriteLine("[ERROR] Missing or invalid --date YYYYMMDD argument");
+                PrintHelp();
+                return;
+            }
+
+            Console.WriteLine($"[INFO] Running dataset={dataset}, date={date:yyyyMMdd}");
+
+            string bucket = Environment.GetEnvironmentVariable("BRAIN_S3_BUCKET");
+
+            string outputRoot = AppDomain.CurrentDomain.BaseDirectory;
+
+            switch (dataset.ToLowerInvariant())
+            {
+                case "blmect":
+                    Console.WriteLine("[INFO] Starting BLMECT converter...");
+                    var c1 = new BrainLanguageMetricsEarningsCallsConverter(bucket, outputRoot);
+                    c1.ProcessDate(date);
+                    break;
+
+                case "bwpv":
+                    Console.WriteLine("[INFO] Starting BWPV converter...");
+                    var c2 = new BrainWikipediaPageViewsConverter(bucket, outputRoot);
+                    c2.ProcessDate(date);
+                    break;
+
+                default:
+                    Console.WriteLine($"[ERROR] Unknown dataset: {dataset}");
+                    PrintHelp();
+                    return;
+            }
+
+            Console.WriteLine("[INFO] Completed.");
+        }
+
+        private static void PrintHelp()
+        {
+            Console.WriteLine("Usage:");
+            Console.WriteLine("  dotnet process.dll --dataset <BLMECT|BWPV> --date YYYYMMDD");
+            Console.WriteLine();
+            Console.WriteLine("Examples:");
+            Console.WriteLine("  dotnet process.dll --dataset BLMECT --date 20250901");
+            Console.WriteLine("  dotnet process.dll --dataset BWPV  --date 20241211");
         }
     }
 }
