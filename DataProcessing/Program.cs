@@ -13,103 +13,168 @@
  * limitations under the License.
 */
 
+using QuantConnect.Configuration;
+using QuantConnect.Logging;
+using QuantConnect.Util;
 using System;
-using System.Globalization;
+using System.Collections.Generic;
+using System.IO;
 using QuantConnect.DataSource;
 
 namespace QuantConnect.DataProcessing
 {
     /// <summary>
-    /// CLI entrypoint for Brain dataset processing.
-    /// Supports:
-    ///   --dataset BLMECT
-    ///   --dataset BWPV
-    ///   --date YYYYMMDD
+    /// Entry point for Brain dataset processors following Lean DataFleet standards.
     /// </summary>
-    public static class Program
+    public class Program
     {
         public static void Main(string[] args)
         {
-            if (args.Length == 0)
-            {
-                PrintHelp();
-                return;
-            }
-
             string dataset = null;
-            DateTime date = DateTime.MinValue;
 
-            for (int i = 0; i < args.Length; i++)
+            try
             {
-                switch (args[i].ToLowerInvariant())
+                for (int i = 0; i < args.Length; i++)
                 {
-                    case "--dataset":
-                        dataset = args[++i];
-                        break;
+                    switch (args[i].ToLowerInvariant())
+                    {
+                        case "--dataset":
+                            dataset = args[++i];
+                            break;
 
-                    case "--date":
-                        string ds = args[++i];
-                        date = DateTime.ParseExact(ds, "yyyyMMdd", CultureInfo.InvariantCulture);
-                        break;
-
-                    case "--help":
-                    case "-h":
-                        PrintHelp();
-                        return;
+                        case "--help":
+                        case "-h":
+                            PrintHelp();
+                            Environment.Exit(0);
+                            break;
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Failed parsing arguments");
+                PrintHelp();
+                Environment.Exit(1);
             }
 
             if (string.IsNullOrWhiteSpace(dataset))
             {
-                Console.WriteLine("[ERROR] Missing --dataset argument");
+                Log.Error("Missing --dataset argument");
                 PrintHelp();
-                return;
+                Environment.Exit(1);
             }
 
-            if (date == DateTime.MinValue)
+            // ------------------------------------------------------------
+            // Read required environment variables
+            // ------------------------------------------------------------
+            var deploymentDateValue = Environment.GetEnvironmentVariable("QC_DATAFLEET_DEPLOYMENT_DATE");
+            if (string.IsNullOrWhiteSpace(deploymentDateValue))
             {
-                Console.WriteLine("[ERROR] Missing or invalid --date YYYYMMDD argument");
-                PrintHelp();
-                return;
+                Log.Error("QC_DATAFLEET_DEPLOYMENT_DATE environment variable missing.");
+                Environment.Exit(1);
             }
 
-            Console.WriteLine($"[INFO] Running dataset={dataset}, date={date:yyyyMMdd}");
+            var deploymentDate = Parse.DateTimeExact(deploymentDateValue, "yyyyMMdd");
 
-            string bucket = Environment.GetEnvironmentVariable("BRAIN_S3_BUCKET");
+            var awsAccessKeyId = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID");
+            var awsSecretAccessKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY");
+            var bucket = Environment.GetEnvironmentVariable("BRAIN_S3_BUCKET");
 
-            string outputRoot = AppDomain.CurrentDomain.BaseDirectory;
-
-            switch (dataset.ToLowerInvariant())
+            if (string.IsNullOrWhiteSpace(awsAccessKeyId) ||
+                string.IsNullOrWhiteSpace(awsSecretAccessKey) ||
+                string.IsNullOrWhiteSpace(bucket))
             {
-                case "blmect":
-                    Console.WriteLine("[INFO] Starting BLMECT converter...");
-                    var c1 = new BrainLanguageMetricsEarningsCallsConverter(bucket, outputRoot);
-                    c1.ProcessDate(date);
-                    break;
-
-                case "bwpv":
-                    Console.WriteLine("[INFO] Starting BWPV converter...");
-                    var c2 = new BrainWikipediaPageViewsConverter(bucket, outputRoot);
-                    c2.ProcessDate(date);
-                    break;
-
-                default:
-                    Console.WriteLine($"[ERROR] Unknown dataset: {dataset}");
-                    PrintHelp();
-                    return;
+                Log.Error("Missing AWS credentials or BRAIN_S3_BUCKET.");
+                Environment.Exit(1);
             }
 
-            Console.WriteLine("[INFO] Completed.");
+            // ------------------------------------------------------------
+            // Output directory
+            // ------------------------------------------------------------
+            //var outputRoot = Path.Combine(Config.Get("temp-output-directory", "/temp-output-directory"),"alternative");
+            var outputRoot = "/Users/ashutosh/Documents/GitHub/Lean.DataSource.BrainSentiment/DataProcessing/Output";
+
+            Directory.CreateDirectory(outputRoot);
+
+            Log.Trace($"Starting Brain dataset processor for dataset={dataset}, date={deploymentDate:yyyyMMdd}");
+
+            var converters = new List<IBrainDataConverter>();
+
+            try
+            {
+                switch (dataset.ToLowerInvariant())
+                {
+                    case "blmect":
+                        converters.Add(
+                            new BrainLanguageMetricsEarningsCallsConverter(
+                                awsAccessKeyId,
+                                awsSecretAccessKey,
+                                bucket,
+                                outputRoot
+                            )
+                        );
+                        break;
+
+                    case "bwpv":
+                        converters.Add(
+                            new BrainWikipediaPageViewsConverter(
+                                awsAccessKeyId,
+                                awsSecretAccessKey,
+                                bucket,
+                                outputRoot
+                            )
+                        );
+                        break;
+
+                    default:
+                        Log.Error($"Unknown dataset '{dataset}'");
+                        PrintHelp();
+                        Environment.Exit(1);
+                        break;
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Failed constructing converter");
+                Environment.Exit(1);
+            }
+
+            var success = true;
+
+            foreach (var converter in converters)
+            {
+                try
+                {
+                    if (!converter.ProcessDate(deploymentDate))
+                    {
+                        Log.Error($"Failed to process dataset={dataset}");
+                        success = false;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, $"Converter for {dataset} crashed unexpectedly");
+                    success = false;
+                }
+
+                converter.DisposeSafely();
+            }
+
+            Environment.Exit(success ? 0 : 1);
         }
 
         private static void PrintHelp()
         {
-            Console.WriteLine("Usage:");
-            Console.WriteLine("  dotnet process.dll --dataset <BLMECT|BWPV> --date YYYYMMDD");
-            Console.WriteLine();
-            Console.WriteLine("Examples:");
-            Console.WriteLine("  dotnet process.dll --dataset BLMECT --date 20250901");
-            Console.WriteLine("  dotnet process.dll --dataset BWPV  --date 20241211");
+            Log.Trace("Usage:");
+            Log.Trace("  dotnet process.dll --dataset <BLMECT|BWPV>");
         }
+    }
+
+    /// <summary>
+    /// Shared interface for Brain converters.
+    /// </summary>
+    public interface IBrainDataConverter : IDisposable
+    {
+        bool ProcessDate(DateTime date);
     }
 }

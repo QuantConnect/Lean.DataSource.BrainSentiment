@@ -5,37 +5,57 @@ using System.IO;
 using Amazon;
 using Amazon.S3;
 using Amazon.S3.Model;
+using QuantConnect.Logging;
+using QuantConnect.DataProcessing;
 
 namespace QuantConnect.DataSource
 {
     /// <summary>
-    /// Converts daily S3 BLMECT metrics + differences files into Lean-ready data:
-    ///     alternative/brain/blmect/{symbol}.csv
+    /// Converts Brain Language Metrics on Earnings Calls (BLMECT)
+    /// raw S3 files into Lean-format:
+    ///
+    ///     blmect/{yyyyMM}/{symbol}.csv
+    ///
+    /// Raw Keys:
+    ///     BLMECT/metrics_earnings_call_YYYYMMDD.csv
+    ///     BLMECT/differences_earnings_call_YYYYMMDD.csv
     /// </summary>
-    public class BrainLanguageMetricsEarningsCallsConverter
+    public class BrainLanguageMetricsEarningsCallsConverter : IBrainDataConverter
     {
         private readonly IAmazonS3 _s3;
         private readonly string _bucket;
         private readonly string _outputRoot;
 
-        public BrainLanguageMetricsEarningsCallsConverter(string bucket, string outputRoot)
+        public BrainLanguageMetricsEarningsCallsConverter(
+            string awsAccessKeyId,
+            string awsSecretAccessKey,
+            string bucket,
+            string outputRoot)
         {
             _bucket = bucket;
             _outputRoot = outputRoot;
-            _s3 = new AmazonS3Client(RegionEndpoint.USEast1);
+
+            _s3 = new AmazonS3Client(
+                awsAccessKeyId,
+                awsSecretAccessKey,
+                RegionEndpoint.USEast1
+            );
         }
 
-        public void ProcessDate(DateTime date)
+        /// <summary>
+        /// Converts all files for the given deployment date.
+        /// </summary>
+        public bool ProcessDate(DateTime date)
         {
-            string fileDate = date.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+            var fileDate = date.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
 
-            // ============================================================================
-            // 1. LOAD DIFF FILE
-            // ============================================================================
-            string diffKey = $"BLMECT/differences_earnings_call_{fileDate}.csv";
-            Console.WriteLine($"[BLMECT] Downloading DIFF: {diffKey}");
+            // ------------------------------------------------------------
+            // 1. Load the DIFF file
+            // ------------------------------------------------------------
+            var diffKey = $"BLMECT/differences_earnings_call_{fileDate}.csv";
+            var diffByTicker = new Dictionary<string, string[]>();
 
-            var diffByTicker = new Dictionary<string, string[]>(); // key = ticker
+            Log.Trace($"[BLMECT] Downloading DIFF: s3://{_bucket}/{diffKey}");
 
             try
             {
@@ -45,150 +65,164 @@ namespace QuantConnect.DataSource
                     Key = diffKey
                 }).Result;
 
-                using var diffReader = new StreamReader(diffResponse.ResponseStream);
+                using var reader = new StreamReader(diffResponse.ResponseStream);
 
-                string diffHeader = diffReader.ReadLine();
-                char diffDelimiter = diffHeader.Contains('\t') ? '\t' : ',';
+                var header = reader.ReadLine();
+                var delimiter = header.Contains('\t') ? '\t' : ',';
 
-                string diffLine;
-                while ((diffLine = diffReader.ReadLine()) != null)
+                string line;
+                while ((line = reader.ReadLine()) != null)
                 {
-                    var parts = diffLine.Split(diffDelimiter);
+                    var parts = line.Split(delimiter);
                     if (parts.Length < 47)
                     {
-                        Console.WriteLine($"[BLMECT] DIFF skipped row (too few columns): {parts.Length}");
+                        Log.Trace($"[BLMECT] DIFF skipped row (too few columns): {parts.Length}");
                         continue;
                     }
 
-                    string ticker = parts[1];
+                    var ticker = parts[1];
+                    if (!string.IsNullOrWhiteSpace(ticker))
+                        diffByTicker[ticker] = parts;
+                }
+            }
+            catch (Exception err)
+            {
+                Log.Trace($"[BLMECT] DIFF optional file missing for {fileDate}: {err.Message}");
+            }
+
+            // ------------------------------------------------------------
+            // 2. Load the METRICS file
+            // ------------------------------------------------------------
+            var metricsKey = $"BLMECT/metrics_earnings_call_{fileDate}.csv";
+
+            Log.Trace($"[BLMECT] Downloading METRICS: s3://{_bucket}/{metricsKey}");
+
+            Dictionary<string, List<string>> rowsBySymbol = new();
+
+            GetObjectResponse metricsResponse;
+            try
+            {
+                metricsResponse = _s3.GetObjectAsync(new GetObjectRequest
+                {
+                    BucketName = _bucket,
+                    Key = metricsKey
+                }).Result;
+            }
+            catch (Exception err)
+            {
+                Log.Error(err, $"[BLMECT] Failed to download METRICS file for {fileDate}");
+                return false;
+            }
+
+            try
+            {
+                using var reader = new StreamReader(metricsResponse.ResponseStream);
+
+                var header = reader.ReadLine();
+                var delimiter = header.Contains('\t') ? '\t' : ',';
+
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    var parts = line.Split(delimiter);
+                    if (parts.Length < 29)
+                    {
+                        Log.Trace($"[BLMECT] METRICS skipped row (too few columns): {parts.Length}");
+                        continue;
+                    }
+
+                    var ticker = parts[1];
                     if (string.IsNullOrWhiteSpace(ticker))
                         continue;
 
-                    diffByTicker[ticker] = parts;
+                    diffByTicker.TryGetValue(ticker, out var diffRow);
+
+                    var outRow = BuildOutputRow(fileDate, parts, diffRow);
+
+                    if (!rowsBySymbol.TryGetValue(ticker, out var list))
+                    {
+                        list = new List<string>();
+                        rowsBySymbol[ticker] = list;
+                    }
+
+                    list.Add(outRow);
                 }
             }
-            catch (Exception ex)
+            catch (Exception err)
             {
-                Console.WriteLine($"[BLMECT] WARNING: DIFF file not found for {fileDate}. Continuing without diff. Error: {ex.Message}");
+                Log.Error(err, "[BLMECT] Failed parsing METRICS CSV.");
+                return false;
             }
 
-            // ============================================================================
-            // 2. LOAD METRICS FILE
-            // ============================================================================
-            string metricsKey = $"BLMECT/metrics_earnings_call_{fileDate}.csv";
-            Console.WriteLine($"[BLMECT] Downloading METRICS: {metricsKey}");
-
-            var rowsBySymbol = new Dictionary<string, List<string>>();
-
-            using var metricsResponse = _s3.GetObjectAsync(new GetObjectRequest
-            {
-                BucketName = _bucket,
-                Key = metricsKey
-            }).Result;
-
-            using var metricsReader = new StreamReader(metricsResponse.ResponseStream);
-
-            string metricsHeader = metricsReader.ReadLine();
-            char metricsDelimiter = metricsHeader.Contains('\t') ? '\t' : ',';
-
-            string metricsLine;
-            while ((metricsLine = metricsReader.ReadLine()) != null)
-            {
-                var parts = metricsLine.Split(metricsDelimiter);
-                if (parts.Length < 29)
-                {
-                    Console.WriteLine($"[BLMECT] METRICS skipped row (too few columns): {parts.Length}");
-                    continue;
-                }
-
-                string ticker = parts[1];
-                if (string.IsNullOrWhiteSpace(ticker))
-                    continue;
-
-                diffByTicker.TryGetValue(ticker, out var diffRow);
-
-                string output = BuildOutputRow(fileDate, parts, diffRow);
-
-                if (!rowsBySymbol.ContainsKey(ticker))
-                    rowsBySymbol[ticker] = new List<string>();
-
-                rowsBySymbol[ticker].Add(output);
-            }
-
-            string outDir = Path.Combine(_outputRoot, "alternative", "brain", "blmect");
+            var outDir = Path.Combine(_outputRoot, "blmect");
             Directory.CreateDirectory(outDir);
 
-            foreach (var kvp in rowsBySymbol)
+            try
             {
-                string ticker = kvp.Key.ToLowerInvariant();
-                string filePath = Path.Combine(outDir, $"{ticker}.csv");
+                foreach (var kvp in rowsBySymbol)
+                {
+                    var ticker = kvp.Key.ToLowerInvariant();
+                    var filePath = Path.Combine(outDir, $"{ticker}.csv");
 
-                using var writer = new StreamWriter(filePath, append: true);
-                foreach (var line in kvp.Value)
-                    writer.WriteLine(line);
+                    using var writer = new StreamWriter(filePath, append: true);
+                    foreach (var row in kvp.Value)
+                        writer.WriteLine(row);
+                }
+            }
+            catch (Exception err)
+            {
+                Log.Error(err, "[BLMECT] Failed writing output files.");
+                return false;
             }
 
-            Console.WriteLine($"[BLMECT] Finished {fileDate}: Wrote {rowsBySymbol.Count} symbols.");
+            Log.Trace($"[BLMECT] Completed fileDate={fileDate}: {rowsBySymbol.Count} symbols written.");
+
+            return true;
         }
 
-
+        /// <summary>
+        /// Build the combined metrics+diff output record.
+        /// </summary>
         private static string BuildOutputRow(string fileDate, string[] metrics, string[] diff)
         {
             var f = new List<string>();
 
-            // 0) Snapshot date = file date
+            // 0 - snapshot date
             f.Add(fileDate);
 
-            // === METRICS SECTION ===
-            // (We keep Fields 3–28 from metrics dataset)
-            // Since metrics[0]=FIGI, metrics[1]=TICKER, metrics[2]=LAST_TRANSCRIPT_DATE
+            // metrics fields
+            f.Add(DateTime.TryParse(metrics[3], out var dt) ? dt.ToString("yyyyMMdd") : "");
+            f.Add(metrics[4]); // quarter
+            f.Add(metrics[5]); // year
 
-            f.Add(DateTime.TryParse(metrics[3], out var x) ? x.ToString("yyyyMMdd") : "");
-            f.Add(metrics[4]);  // quarter
-            f.Add(metrics[5]);  // year
+            for (int i = 6; i < 15; i++) f.Add(metrics[i]);
+            for (int i = 15; i < 20; i++) f.Add(metrics[i]);
+            for (int i = 20; i < 29; i++) f.Add(metrics[i]);
 
-            // MD metrics (indices 6..14)
-            for (int i = 6; i < 15; i++)
-                f.Add(metrics[i]);
-
-            // AQ metrics (indices 15..19)
-            for (int i = 15; i < 20; i++)
-                f.Add(metrics[i]);
-
-            // MA metrics (indices 20..28)
-            for (int i = 20; i < 29; i++)
-                f.Add(metrics[i]);
-
-            // === DIFF SECTION ===
+            // DIFF fields (if available)
             if (diff != null)
             {
-                // prev transcript info (indices 6,7,8)
-                //f.Add(diff[6]); // prev date
                 f.Add(DateTime.TryParse(diff[6], out var dtPrev) ? dtPrev.ToString("yyyyMMdd") : "");
                 f.Add(diff[7]); // prev quarter
                 f.Add(diff[8]); // prev year
 
-                // MD deltas/similarities (indices 9..23)
-                for (int i = 9; i <= 23; i++)
-                    f.Add(diff[i]);
-
-                // AQ deltas/similarities (indices 24..31)
-                for (int i = 24; i <= 31; i++)
-                    f.Add(diff[i]);
-
-                // MA deltas/similarities (indices 32..46)
-                for (int i = 32; i <= 46; i++)
-                    f.Add(diff[i]);
+                for (int i = 9; i <= 23; i++) f.Add(diff[i]);
+                for (int i = 24; i <= 31; i++) f.Add(diff[i]);
+                for (int i = 32; i <= 46; i++) f.Add(diff[i]);
             }
             else
             {
-                // No diff row → pad blanks (41 fields)
-                int blanks = 3 + 15 + 8 + 15; // = 41
-                for (int i = 0; i < blanks; i++)
+                // Blank padding: 41 fields
+                for (int i = 0; i < 41; i++)
                     f.Add("");
             }
 
             return string.Join(",", f);
+        }
+
+        public void Dispose()
+        {
+            // nothing to clean up
         }
     }
 }
