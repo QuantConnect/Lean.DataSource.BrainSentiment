@@ -91,9 +91,8 @@ namespace QuantConnect.DataProcessing
             // ------------------------------------------------------------
             // Output directory
             // ------------------------------------------------------------
-            //var outputRoot = Path.Combine(Config.Get("temp-output-directory", "/temp-output-directory"),"alternative");
-            var outputRoot = "/Users/ashutosh/Documents/GitHub/Lean.DataSource.BrainSentiment/DataProcessing/Output";
-
+            var outputRoot = Path.Combine(Config.Get("temp-output-directory", "/temp-output-directory"),"alternative");
+        
             Directory.CreateDirectory(outputRoot);
 
             Log.Trace($"Starting Brain dataset processor for dataset={dataset}, date={deploymentDate:yyyyMMdd}");
