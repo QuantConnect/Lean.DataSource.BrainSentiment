@@ -31,6 +31,7 @@ namespace QuantConnect.DataProcessing
         public static void Main(string[] args)
         {
             string dataset = null;
+            var reprocess = false;
 
             try
             {
@@ -42,6 +43,10 @@ namespace QuantConnect.DataProcessing
                             dataset = args[++i];
                             break;
 
+                        case "--reprocess":
+                            reprocess = bool.Parse(args[++i]);
+                            break;
+                        
                         case "--help":
                         case "-h":
                             PrintHelp();
@@ -70,12 +75,11 @@ namespace QuantConnect.DataProcessing
             var deploymentDateValue = Environment.GetEnvironmentVariable("QC_DATAFLEET_DEPLOYMENT_DATE");
             if (string.IsNullOrWhiteSpace(deploymentDateValue))
             {
-                Log.Error("QC_DATAFLEET_DEPLOYMENT_DATE environment variable missing.");
-                Environment.Exit(1);
+                deploymentDateValue = DateTime.UtcNow.AddDays(-1).ToString("yyyyMMdd");
+                Log.Error($"QC_DATAFLEET_DEPLOYMENT_DATE environment variable missing. Using {deploymentDateValue}");
             }
 
             var deploymentDate = Parse.DateTimeExact(deploymentDateValue, "yyyyMMdd");
-
             var awsAccessKeyId = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID");
             var awsSecretAccessKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY");
             var bucket = Environment.GetEnvironmentVariable("BRAIN_S3_BUCKET");
@@ -92,7 +96,6 @@ namespace QuantConnect.DataProcessing
             // Output directory
             // ------------------------------------------------------------
             var outputRoot = Path.Combine(Config.Get("temp-output-directory", "/temp-output-directory"),"alternative");
-        
             Directory.CreateDirectory(outputRoot);
 
             Log.Trace($"Starting Brain dataset processor for dataset={dataset}, date={deploymentDate:yyyyMMdd}");
@@ -144,6 +147,15 @@ namespace QuantConnect.DataProcessing
             {
                 try
                 {
+                    if (reprocess)
+                    {
+                        if (!converter.ProcessHistory())
+                        {
+                            Log.Error($"Failed to process history for dataset={dataset}");
+                            success = false;
+                        }
+                    }       
+
                     if (!converter.ProcessDate(deploymentDate))
                     {
                         Log.Error($"Failed to process dataset={dataset}");
@@ -175,5 +187,6 @@ namespace QuantConnect.DataProcessing
     public interface IBrainDataConverter : IDisposable
     {
         bool ProcessDate(DateTime date);
+        bool ProcessHistory();
     }
 }

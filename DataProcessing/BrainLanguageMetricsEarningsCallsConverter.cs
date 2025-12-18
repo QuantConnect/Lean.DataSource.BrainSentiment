@@ -7,6 +7,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using QuantConnect.Logging;
 using QuantConnect.DataProcessing;
+using System.Linq;
 
 namespace QuantConnect.DataSource
 {
@@ -14,7 +15,7 @@ namespace QuantConnect.DataSource
     /// Converts Brain Language Metrics on Earnings Calls (BLMECT)
     /// raw S3 files into Lean-format:
     ///
-    ///     blmect/{yyyyMM}/{symbol}.csv
+    ///     blmect/{yyyyMMdd}/{symbol}.csv
     ///
     /// Raw Keys:
     ///     BLMECT/metrics_earnings_call_YYYYMMDD.csv
@@ -40,6 +41,34 @@ namespace QuantConnect.DataSource
                 awsSecretAccessKey,
                 RegionEndpoint.USEast1
             );
+        }
+
+        /// <summary>
+        /// Converts all available deployment dates.
+        /// </summary>
+        public bool ProcessHistory()
+        {
+            var dates = new List<DateTime>();
+            var req = new ListObjectsV2Request
+            {
+                BucketName = _bucket,
+                Prefix = "BLMECT/"
+            };
+
+            ListObjectsV2Response resp;
+            
+            do
+                {
+                    resp = _s3.ListObjectsV2Async(req).GetAwaiter().GetResult();
+                    var s3Objects = resp.S3Objects;
+                    dates.AddRange(s3Objects.Where(x => x.Key.StartsWith("BLMECT/differences_earnings_call_")).Select(x => DateTime.ParseExact(x.Key[33..41], "yyyyMMdd", CultureInfo.InvariantCulture)));
+                    dates.AddRange(s3Objects.Where(x => x.Key.StartsWith("BLMECT/metrics_earnings_call_")).Select(x => DateTime.ParseExact(x.Key[29..37], "yyyyMMdd", CultureInfo.InvariantCulture)));
+                    req.ContinuationToken = resp.NextContinuationToken;
+                }
+            while (resp.IsTruncated);
+            
+            Log.Trace($"[BLMECT] Found {dates.Distinct().Count()} unique deployment dates.");
+            return dates.Distinct().OrderBy(x => x).All(ProcessDate);
         }
 
         /// <summary>

@@ -8,6 +8,7 @@ using Amazon.S3.Model;
 using QuantConnect;
 using QuantConnect.Logging;
 using QuantConnect.DataProcessing;
+using System.Linq;
 
 namespace QuantConnect.DataSource
 {
@@ -40,6 +41,33 @@ namespace QuantConnect.DataSource
             );
         }
 
+        /// <summary>
+        /// Converts all available deployment dates.
+        /// </summary>
+        public bool ProcessHistory()
+        {
+            var dates = new List<DateTime>();
+            var req = new ListObjectsV2Request
+            {
+                BucketName = _bucket,
+                Prefix = "BWPV/"
+            };
+
+            ListObjectsV2Response resp;
+            
+            do
+                {
+                    resp = _s3Client.ListObjectsV2Async(req).GetAwaiter().GetResult();
+                    var s3Objects = resp.S3Objects;
+                    dates.AddRange(s3Objects.Where(x => x.Key.StartsWith("BWPV/metrics_")).Select(x => DateTime.ParseExact(x.Key[13..21], "yyyyMMdd", CultureInfo.InvariantCulture)));
+                    req.ContinuationToken = resp.NextContinuationToken;
+                }
+            while (resp.IsTruncated);
+            
+            Log.Trace($"[BWPV] Found {dates.Distinct().Count()} unique deployment dates.");
+            return dates.Distinct().OrderBy(x => x).All(ProcessDate);
+        }
+        
         /// <summary>
         /// Processes a single deployment date file.
         /// </summary>
