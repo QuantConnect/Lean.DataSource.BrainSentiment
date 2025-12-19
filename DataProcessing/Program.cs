@@ -13,23 +13,180 @@
  * limitations under the License.
 */
 
+using QuantConnect.Configuration;
+using QuantConnect.Logging;
+using QuantConnect.Util;
 using System;
+using System.Collections.Generic;
+using System.IO;
+using QuantConnect.DataSource;
 
 namespace QuantConnect.DataProcessing
 {
     /// <summary>
-    /// Entrypoint for the data downloader/converter
+    /// Entry point for Brain dataset processors following Lean DataFleet standards.
     /// </summary>
     public class Program
     {
-        /// <summary>
-        /// Entrypoint of the program
-        /// </summary>
-        /// <returns>Exit code. 0 equals successful, and any other value indicates the downloader/converter failed.</returns>
-        public static void Main()
+        public static void Main(string[] args)
         {
-            // The downloader/converter was successful
-            Environment.Exit(0);
+            string dataset = null;
+            var reprocess = false;
+
+            try
+            {
+                for (int i = 0; i < args.Length; i++)
+                {
+                    switch (args[i].ToLowerInvariant())
+                    {
+                        case "--dataset":
+                            dataset = args[++i];
+                            break;
+
+                        case "--reprocess":
+                            reprocess = bool.Parse(args[++i]);
+                            break;
+                        
+                        case "--help":
+                        case "-h":
+                            PrintHelp();
+                            Environment.Exit(0);
+                            break;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Failed parsing arguments");
+                PrintHelp();
+                Environment.Exit(1);
+            }
+
+            if (string.IsNullOrWhiteSpace(dataset))
+            {
+                Log.Error("Missing --dataset argument");
+                PrintHelp();
+                Environment.Exit(1);
+            }
+
+            // ------------------------------------------------------------
+            // Read required environment variables
+            // ------------------------------------------------------------
+            var deploymentDateValue = Environment.GetEnvironmentVariable("QC_DATAFLEET_DEPLOYMENT_DATE");
+            if (string.IsNullOrWhiteSpace(deploymentDateValue))
+            {
+                deploymentDateValue = DateTime.UtcNow.AddDays(-1).ToString("yyyyMMdd");
+                Log.Error($"QC_DATAFLEET_DEPLOYMENT_DATE environment variable missing. Using {deploymentDateValue}");
+            }
+
+            var deploymentDate = Parse.DateTimeExact(deploymentDateValue, "yyyyMMdd");
+            var awsAccessKeyId = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID");
+            var awsSecretAccessKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY");
+            var bucket = Environment.GetEnvironmentVariable("BRAIN_S3_BUCKET");
+
+            if (string.IsNullOrWhiteSpace(awsAccessKeyId) ||
+                string.IsNullOrWhiteSpace(awsSecretAccessKey) ||
+                string.IsNullOrWhiteSpace(bucket))
+            {
+                Log.Error("Missing AWS credentials or BRAIN_S3_BUCKET.");
+                Environment.Exit(1);
+            }
+
+            // ------------------------------------------------------------
+            // Output directory
+            // ------------------------------------------------------------
+            var outputRoot = Path.Combine(Config.Get("temp-output-directory", "/temp-output-directory"),"alternative");
+            Directory.CreateDirectory(outputRoot);
+
+            Log.Trace($"Starting Brain dataset processor for dataset={dataset}, date={deploymentDate:yyyyMMdd}");
+
+            var converters = new List<IBrainDataConverter>();
+
+            try
+            {
+                switch (dataset.ToLowerInvariant())
+                {
+                    case "blmect":
+                        converters.Add(
+                            new BrainLanguageMetricsEarningsCallsConverter(
+                                awsAccessKeyId,
+                                awsSecretAccessKey,
+                                bucket,
+                                outputRoot
+                            )
+                        );
+                        break;
+
+                    case "bwpv":
+                        converters.Add(
+                            new BrainWikipediaPageViewsConverter(
+                                awsAccessKeyId,
+                                awsSecretAccessKey,
+                                bucket,
+                                outputRoot
+                            )
+                        );
+                        break;
+
+                    default:
+                        Log.Error($"Unknown dataset '{dataset}'");
+                        PrintHelp();
+                        Environment.Exit(1);
+                        break;
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Failed constructing converter");
+                Environment.Exit(1);
+            }
+
+            var success = true;
+
+            foreach (var converter in converters)
+            {
+                try
+                {
+                    if (reprocess)
+                    {
+                        if (!converter.ProcessHistory())
+                        {
+                            Log.Error($"Failed to process history for dataset={dataset}");
+                            success = false;
+                        }
+                    }       
+
+                    if (!converter.ProcessDate(deploymentDate))
+                    {
+                        Log.Error($"Failed to process dataset={dataset}");
+                        success = false;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, $"Converter for {dataset} crashed unexpectedly");
+                    success = false;
+                }
+
+                converter.DisposeSafely();
+            }
+
+            Environment.Exit(success ? 0 : 1);
         }
+
+        private static void PrintHelp()
+        {
+            Log.Trace("Usage:");
+            Log.Trace("  dotnet process.dll --dataset <BLMECT|BWPV>");
+        }
+    }
+
+    /// <summary>
+    /// Shared interface for Brain converters.
+    /// </summary>
+    public interface IBrainDataConverter : IDisposable
+    {
+        bool ProcessDate(DateTime date);
+        bool ProcessHistory();
     }
 }
