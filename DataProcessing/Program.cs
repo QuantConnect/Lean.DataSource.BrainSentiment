@@ -82,7 +82,7 @@ namespace QuantConnect.DataProcessing
             var deploymentDate = Parse.DateTimeExact(deploymentDateValue, "yyyyMMdd");
             var awsAccessKeyId = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID");
             var awsSecretAccessKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY");
-            var bucket = Environment.GetEnvironmentVariable("BRAIN_S3_BUCKET");
+            var bucket = Environment.GetEnvironmentVariable("BRAIN_S3_BUCKET_NAME");
 
             if (string.IsNullOrWhiteSpace(awsAccessKeyId) ||
                 string.IsNullOrWhiteSpace(awsSecretAccessKey) ||
