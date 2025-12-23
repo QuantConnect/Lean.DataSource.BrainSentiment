@@ -1,16 +1,28 @@
+/*
+ * QUANTCONNECT.COM - Democratizing Finance, Empowering Individuals.
+ * Lean Algorithmic Trading Engine v2.0. Copyright 2014 QuantConnect Corporation.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+*/
+
+using Amazon.S3.Model;
+using QuantConnect.Logging;
+using QuantConnect.Util;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using Amazon;
-using Amazon.S3;
-using Amazon.S3.Model;
-using QuantConnect;
-using QuantConnect.Logging;
-using QuantConnect.DataProcessing;
 using System.Linq;
 
-namespace QuantConnect.DataSource
+namespace QuantConnect.DataProcessing
 {
     /// <summary>
     /// Converts Brain Wikipedia Page Views (BWPV) raw S3 files into Lean-format:
@@ -19,78 +31,60 @@ namespace QuantConnect.DataSource
     /// Raw file pattern:
     ///     s3://{bucket}/BWPV/metrics_YYYYMMDD.csv
     /// </summary>
-    public class BrainWikipediaPageViewsConverter : IBrainDataConverter
+    public class BrainWikipediaPageViewsConverter(string outputRoot)
+        : BrainDataConverter("bwpv", outputRoot)
     {
-        private readonly IAmazonS3 _s3Client;
-        private readonly string _bucket;
-        private readonly string _outputRoot;
-
-        public BrainWikipediaPageViewsConverter(
-            string awsAccessKeyId,
-            string awsSecretAccessKey,
-            string bucket,
-            string outputRoot)
-        {
-            _bucket = bucket;
-            _outputRoot = outputRoot;
-
-            _s3Client = new AmazonS3Client(
-                awsAccessKeyId,
-                awsSecretAccessKey,
-                RegionEndpoint.USEast1
-            );
-        }
 
         /// <summary>
         /// Converts all available deployment dates.
         /// </summary>
-        public bool ProcessHistory()
+        public override bool ProcessHistory()
         {
             var dates = new List<DateTime>();
             var req = new ListObjectsV2Request
             {
-                BucketName = _bucket,
-                Prefix = "BWPV/"
+                BucketName = BucketName,
+                Prefix = $"{Prefix}/"
             };
 
             ListObjectsV2Response resp;
-            
+
             do
-                {
-                    resp = _s3Client.ListObjectsV2Async(req).GetAwaiter().GetResult();
-                    var s3Objects = resp.S3Objects;
-                    dates.AddRange(s3Objects.Where(x => x.Key.StartsWith("BWPV/metrics_")).Select(x => DateTime.ParseExact(x.Key[13..21], "yyyyMMdd", CultureInfo.InvariantCulture)));
-                    req.ContinuationToken = resp.NextContinuationToken;
-                }
+            {
+                resp = S3Client.ListObjectsV2Async(req).GetAwaiter().GetResult();
+                var s3Objects = resp.S3Objects;
+                dates.AddRange(s3Objects.Where(x => x.Key.StartsWith($"{Prefix}/metrics_")).Select(x => DateTime.ParseExact(x.Key[13..21], "yyyyMMdd", CultureInfo.InvariantCulture)));
+                req.ContinuationToken = resp.NextContinuationToken;
+            }
             while (resp.IsTruncated);
             
-            Log.Trace($"[BWPV] Found {dates.Distinct().Count()} unique deployment dates.");
+            Log.Trace($"[{Prefix}] Found {dates.Distinct().Count()} unique deployment dates.");
             return dates.Distinct().OrderBy(x => x).All(ProcessDate);
         }
-        
+
         /// <summary>
         /// Processes a single deployment date file.
         /// </summary>
-        public bool ProcessDate(DateTime date)
+        public override bool ProcessDate(DateTime date)
         {
-            var dateString = date.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
-            var key = $"BWPV/metrics_{dateString}.csv";
+            var fileDate = date.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+            var key = $"{Prefix}/metrics_{fileDate}.csv";
 
-            Log.Trace($"[BWPV] Downloading s3://{_bucket}/{key}");
+            Log.Trace($"[{Prefix}] Downloading s3://***/{key}");
 
             GetObjectResponse response;
 
             try
             {
-                response = _s3Client.GetObjectAsync(new GetObjectRequest
+                response = S3Client.GetObjectAsync(new GetObjectRequest
                 {
-                    BucketName = _bucket,
+                    BucketName = BucketName,
                     Key = key
                 }).Result;
             }
             catch (Exception err)
             {
-                Log.Error(err, $"[BWPV] Failed to download key {key}");
+                Log.Error(err, $"[{Prefix}] Failed to download key {key}");
                 return false;
             }
 
@@ -104,7 +98,7 @@ namespace QuantConnect.DataSource
                 var header = reader.ReadLine();
                 if (string.IsNullOrWhiteSpace(header))
                 {
-                    Log.Error("[BWPV] Empty header line.");
+                    Log.Error($"[{Prefix}] Empty header line.");
                     return false;
                 }
 
@@ -143,8 +137,7 @@ namespace QuantConnect.DataSource
 
                     if (!rowsBySymbol.TryGetValue(ticker, out var list))
                     {
-                        list = new List<string>();
-                        rowsBySymbol[ticker] = list;
+                        rowsBySymbol[ticker] = list = [];
                     }
 
                     list.Add(outRow);
@@ -152,41 +145,23 @@ namespace QuantConnect.DataSource
             }
             catch (Exception err)
             {
-                Log.Error(err, "[BWPV] Failed while parsing CSV.");
+                Log.Error(err, $"[{Prefix}] Failed while parsing CSV.");
                 return false;
             }
-            
-            var outDir = Path.Combine(_outputRoot, "bwpv");
 
-            Directory.CreateDirectory(outDir);
-
-            foreach (var kvp in rowsBySymbol)
+            try
             {
-                var ticker = kvp.Key.ToLowerInvariant();
-                var filePath = Path.Combine(outDir, $"{ticker}.csv");
-
-                try
-                {
-                    using var writer = new StreamWriter(filePath, append: true);
-                    foreach (var row in kvp.Value)
-                        writer.WriteLine(row);
-                }
-                catch (Exception err)
-                {
-                    Log.Error(err, $"[BWPV] Failed writing file {filePath}");
-                    return false;
-                }
+                rowsBySymbol.DoForEach(kvp => SaveContentToFile(kvp.Key, kvp.Value));
+            }
+            catch (Exception err)
+            {
+                Log.Error(err, $"[{Prefix}] Failed writing output files.");
+                return false;
             }
 
-            return true;
-        }
+            Log.Trace($"[{Prefix}] Completed fileDate={fileDate}: {rowsBySymbol.Count} symbols written.");
 
-        /// <summary>
-        /// Required by the IBrainDataConverter interface.
-        /// </summary>
-        public void Dispose()
-        {
-            // Nothing to dispose right now.
+            return true;
         }
     }
 }

@@ -17,9 +17,7 @@ using QuantConnect.Configuration;
 using QuantConnect.Logging;
 using QuantConnect.Util;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using QuantConnect.DataSource;
 
 namespace QuantConnect.DataProcessing
 {
@@ -80,52 +78,27 @@ namespace QuantConnect.DataProcessing
             }
 
             var deploymentDate = Parse.DateTimeExact(deploymentDateValue, "yyyyMMdd");
-            var awsAccessKeyId = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID");
-            var awsSecretAccessKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY");
-            var bucket = Environment.GetEnvironmentVariable("BRAIN_S3_BUCKET_NAME");
-
-            if (string.IsNullOrWhiteSpace(awsAccessKeyId) ||
-                string.IsNullOrWhiteSpace(awsSecretAccessKey) ||
-                string.IsNullOrWhiteSpace(bucket))
-            {
-                Log.Error("Missing AWS credentials or BRAIN_S3_BUCKET.");
-                Environment.Exit(1);
-            }
-
+            
             // ------------------------------------------------------------
             // Output directory
             // ------------------------------------------------------------
-            var outputRoot = Path.Combine(Config.Get("temp-output-directory", "/temp-output-directory"),"alternative");
+            var outputRoot = Path.Combine(Config.Get("temp-output-directory", "/temp-output-directory"), "alternative", "brain");
             Directory.CreateDirectory(outputRoot);
 
             Log.Trace($"Starting Brain dataset processor for dataset={dataset}, date={deploymentDate:yyyyMMdd}");
 
-            var converters = new List<IBrainDataConverter>();
+            BrainDataConverter converter = null;
 
             try
             {
                 switch (dataset.ToLowerInvariant())
                 {
                     case "blmect":
-                        converters.Add(
-                            new BrainLanguageMetricsEarningsCallsConverter(
-                                awsAccessKeyId,
-                                awsSecretAccessKey,
-                                bucket,
-                                outputRoot
-                            )
-                        );
+                        converter = new BrainLanguageMetricsEarningsCallsConverter(outputRoot);
                         break;
 
                     case "bwpv":
-                        converters.Add(
-                            new BrainWikipediaPageViewsConverter(
-                                awsAccessKeyId,
-                                awsSecretAccessKey,
-                                bucket,
-                                outputRoot
-                            )
-                        );
+                        converter = new BrainWikipediaPageViewsConverter(outputRoot);
                         break;
 
                     default:
@@ -143,33 +116,30 @@ namespace QuantConnect.DataProcessing
 
             var success = true;
 
-            foreach (var converter in converters)
+            try
             {
-                try
+                if (reprocess)
                 {
-                    if (reprocess)
+                    if (!converter.ProcessHistory())
                     {
-                        if (!converter.ProcessHistory())
-                        {
-                            Log.Error($"Failed to process history for dataset={dataset}");
-                            success = false;
-                        }
-                    }       
-
-                    if (!converter.ProcessDate(deploymentDate))
-                    {
-                        Log.Error($"Failed to process dataset={dataset}");
+                        Log.Error($"Failed to process history for dataset={dataset}");
                         success = false;
                     }
                 }
-                catch (Exception e)
+
+                if (!converter.ProcessDate(deploymentDate))
                 {
-                    Log.Error(e, $"Converter for {dataset} crashed unexpectedly");
+                    Log.Error($"Failed to process dataset={dataset}");
                     success = false;
                 }
-
-                converter.DisposeSafely();
             }
+            catch (Exception e)
+            {
+                Log.Error(e, $"Converter for {dataset} crashed unexpectedly");
+                success = false;
+            }
+
+            converter.DisposeSafely();
 
             Environment.Exit(success ? 0 : 1);
         }
@@ -179,14 +149,5 @@ namespace QuantConnect.DataProcessing
             Log.Trace("Usage:");
             Log.Trace("  dotnet process.dll --dataset <BLMECT|BWPV>");
         }
-    }
-
-    /// <summary>
-    /// Shared interface for Brain converters.
-    /// </summary>
-    public interface IBrainDataConverter : IDisposable
-    {
-        bool ProcessDate(DateTime date);
-        bool ProcessHistory();
     }
 }
