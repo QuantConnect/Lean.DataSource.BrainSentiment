@@ -1,15 +1,28 @@
+/*
+ * QUANTCONNECT.COM - Democratizing Finance, Empowering Individuals.
+ * Lean Algorithmic Trading Engine v2.0. Copyright 2014 QuantConnect Corporation.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+*/
+
+using Amazon.S3.Model;
+using QuantConnect.Logging;
+using QuantConnect.Util;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using Amazon;
-using Amazon.S3;
-using Amazon.S3.Model;
-using QuantConnect.Logging;
-using QuantConnect.DataProcessing;
 using System.Linq;
 
-namespace QuantConnect.DataSource
+namespace QuantConnect.DataProcessing
 {
     /// <summary>
     /// Converts Brain Language Metrics on Earnings Calls (BLMECT)
@@ -21,76 +34,57 @@ namespace QuantConnect.DataSource
     ///     BLMECT/metrics_earnings_call_YYYYMMDD.csv
     ///     BLMECT/differences_earnings_call_YYYYMMDD.csv
     /// </summary>
-    public class BrainLanguageMetricsEarningsCallsConverter : IBrainDataConverter
+    public class BrainLanguageMetricsEarningsCallsConverter(string outputRoot) 
+        : BrainDataConverter("blmect", outputRoot)
     {
-        private readonly IAmazonS3 _s3;
-        private readonly string _bucket;
-        private readonly string _outputRoot;
-
-        public BrainLanguageMetricsEarningsCallsConverter(
-            string awsAccessKeyId,
-            string awsSecretAccessKey,
-            string bucket,
-            string outputRoot)
-        {
-            _bucket = bucket;
-            _outputRoot = outputRoot;
-
-            _s3 = new AmazonS3Client(
-                awsAccessKeyId,
-                awsSecretAccessKey,
-                RegionEndpoint.USEast1
-            );
-        }
-
         /// <summary>
         /// Converts all available deployment dates.
         /// </summary>
-        public bool ProcessHistory()
+        public override bool ProcessHistory()
         {
             var dates = new List<DateTime>();
             var req = new ListObjectsV2Request
             {
-                BucketName = _bucket,
-                Prefix = "BLMECT/"
+                BucketName = BucketName,
+                Prefix = $"{Prefix}/"
             };
 
             ListObjectsV2Response resp;
             
             do
-                {
-                    resp = _s3.ListObjectsV2Async(req).GetAwaiter().GetResult();
-                    var s3Objects = resp.S3Objects;
-                    dates.AddRange(s3Objects.Where(x => x.Key.StartsWith("BLMECT/differences_earnings_call_")).Select(x => DateTime.ParseExact(x.Key[33..41], "yyyyMMdd", CultureInfo.InvariantCulture)));
-                    dates.AddRange(s3Objects.Where(x => x.Key.StartsWith("BLMECT/metrics_earnings_call_")).Select(x => DateTime.ParseExact(x.Key[29..37], "yyyyMMdd", CultureInfo.InvariantCulture)));
-                    req.ContinuationToken = resp.NextContinuationToken;
-                }
+            {
+                resp = S3Client.ListObjectsV2Async(req).GetAwaiter().GetResult();
+                var s3Objects = resp.S3Objects;
+                dates.AddRange(s3Objects.Where(x => x.Key.StartsWith($"{Prefix}/differences_earnings_call_")).Select(x => DateTime.ParseExact(x.Key[33..41], "yyyyMMdd", CultureInfo.InvariantCulture)));
+                dates.AddRange(s3Objects.Where(x => x.Key.StartsWith($"{Prefix}/metrics_earnings_call_")).Select(x => DateTime.ParseExact(x.Key[29..37], "yyyyMMdd", CultureInfo.InvariantCulture)));
+                req.ContinuationToken = resp.NextContinuationToken;
+            }
             while (resp.IsTruncated);
             
-            Log.Trace($"[BLMECT] Found {dates.Distinct().Count()} unique deployment dates.");
+            Log.Trace($"[{Prefix}] Found {dates.Distinct().Count()} unique deployment dates.");
             return dates.Distinct().OrderBy(x => x).All(ProcessDate);
         }
 
         /// <summary>
         /// Converts all files for the given deployment date.
         /// </summary>
-        public bool ProcessDate(DateTime date)
+        public override bool ProcessDate(DateTime date)
         {
             var fileDate = date.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
 
             // ------------------------------------------------------------
             // 1. Load the DIFF file
             // ------------------------------------------------------------
-            var diffKey = $"BLMECT/differences_earnings_call_{fileDate}.csv";
+            var diffKey = $"{Prefix}/differences_earnings_call_{fileDate}.csv";
             var diffByTicker = new Dictionary<string, string[]>();
 
-            Log.Trace($"[BLMECT] Downloading DIFF: s3://{_bucket}/{diffKey}");
+            Log.Trace($"[{Prefix}] Downloading DIFF: s3://***/{diffKey}");
 
             try
             {
-                using var diffResponse = _s3.GetObjectAsync(new GetObjectRequest
+                using var diffResponse = S3Client.GetObjectAsync(new GetObjectRequest
                 {
-                    BucketName = _bucket,
+                    BucketName = BucketName,
                     Key = diffKey
                 }).Result;
 
@@ -105,7 +99,7 @@ namespace QuantConnect.DataSource
                     var parts = line.Split(delimiter);
                     if (parts.Length < 47)
                     {
-                        Log.Trace($"[BLMECT] DIFF skipped row (too few columns): {parts.Length}");
+                        Log.Trace($"[{Prefix}] DIFF skipped row (too few columns): {parts.Length}");
                         continue;
                     }
 
@@ -116,30 +110,30 @@ namespace QuantConnect.DataSource
             }
             catch (Exception err)
             {
-                Log.Trace($"[BLMECT] DIFF optional file missing for {fileDate}: {err.Message}");
+                Log.Trace($"[{Prefix}] DIFF optional file missing for {fileDate}: {err.Message}");
             }
 
             // ------------------------------------------------------------
             // 2. Load the METRICS file
             // ------------------------------------------------------------
-            var metricsKey = $"BLMECT/metrics_earnings_call_{fileDate}.csv";
+            var metricsKey = $"{Prefix}/metrics_earnings_call_{fileDate}.csv";
 
-            Log.Trace($"[BLMECT] Downloading METRICS: s3://{_bucket}/{metricsKey}");
+            Log.Trace($"[{Prefix}] Downloading METRICS: s3://***/{metricsKey}");
 
-            Dictionary<string, List<string>> rowsBySymbol = new();
+            Dictionary<string, List<string>> rowsBySymbol = [];
 
             GetObjectResponse metricsResponse;
             try
             {
-                metricsResponse = _s3.GetObjectAsync(new GetObjectRequest
+                metricsResponse = S3Client.GetObjectAsync(new GetObjectRequest
                 {
-                    BucketName = _bucket,
+                    BucketName = BucketName,
                     Key = metricsKey
                 }).Result;
             }
             catch (Exception err)
             {
-                Log.Error(err, $"[BLMECT] Failed to download METRICS file for {fileDate}");
+                Log.Error(err, $"[{Prefix}] Failed to download METRICS file for {fileDate}");
                 return false;
             }
 
@@ -156,7 +150,7 @@ namespace QuantConnect.DataSource
                     var parts = line.Split(delimiter);
                     if (parts.Length < 29)
                     {
-                        Log.Trace($"[BLMECT] METRICS skipped row (too few columns): {parts.Length}");
+                        Log.Trace($"[{Prefix}] METRICS skipped row (too few columns): {parts.Length}");
                         continue;
                     }
 
@@ -170,8 +164,7 @@ namespace QuantConnect.DataSource
 
                     if (!rowsBySymbol.TryGetValue(ticker, out var list))
                     {
-                        list = new List<string>();
-                        rowsBySymbol[ticker] = list;
+                        rowsBySymbol[ticker] = list = [];
                     }
 
                     list.Add(outRow);
@@ -179,32 +172,21 @@ namespace QuantConnect.DataSource
             }
             catch (Exception err)
             {
-                Log.Error(err, "[BLMECT] Failed parsing METRICS CSV.");
+                Log.Error(err, $"[{Prefix}] Failed parsing METRICS CSV.");
                 return false;
             }
-
-            var outDir = Path.Combine(_outputRoot, "blmect");
-            Directory.CreateDirectory(outDir);
 
             try
             {
-                foreach (var kvp in rowsBySymbol)
-                {
-                    var ticker = kvp.Key.ToLowerInvariant();
-                    var filePath = Path.Combine(outDir, $"{ticker}.csv");
-
-                    using var writer = new StreamWriter(filePath, append: true);
-                    foreach (var row in kvp.Value)
-                        writer.WriteLine(row);
-                }
+                rowsBySymbol.DoForEach(kvp => SaveContentToFile(kvp.Key, kvp.Value));
             }
             catch (Exception err)
             {
-                Log.Error(err, "[BLMECT] Failed writing output files.");
+                Log.Error(err, $"[{Prefix}] Failed writing output files.");
                 return false;
             }
 
-            Log.Trace($"[BLMECT] Completed fileDate={fileDate}: {rowsBySymbol.Count} symbols written.");
+            Log.Trace($"[{Prefix}] Completed fileDate={fileDate}: {rowsBySymbol.Count} symbols written.");
 
             return true;
         }
@@ -214,15 +196,16 @@ namespace QuantConnect.DataSource
         /// </summary>
         private static string BuildOutputRow(string fileDate, string[] metrics, string[] diff)
         {
-            var f = new List<string>();
+            var f = new List<string>
+            {
+                // 0 - snapshot date
+                fileDate,
 
-            // 0 - snapshot date
-            f.Add(fileDate);
-
-            // metrics fields
-            f.Add(DateTime.TryParse(metrics[3], out var dt) ? dt.ToString("yyyyMMdd") : "");
-            f.Add(metrics[4]); // quarter
-            f.Add(metrics[5]); // year
+                // metrics fields
+                DateTime.TryParse(metrics[3], out var dt) ? dt.ToString("yyyyMMdd") : "",
+                metrics[4], // quarter
+                metrics[5] // year
+            };
 
             for (int i = 6; i < 15; i++) f.Add(metrics[i]);
             for (int i = 15; i < 20; i++) f.Add(metrics[i]);
@@ -247,11 +230,6 @@ namespace QuantConnect.DataSource
             }
 
             return string.Join(",", f);
-        }
-
-        public void Dispose()
-        {
-            // nothing to clean up
         }
     }
 }
