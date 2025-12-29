@@ -3,6 +3,8 @@ using System.IO;
 using NodaTime;
 using QuantConnect;
 using QuantConnect.Data;
+using System.Globalization;
+using System.Linq;
 
 namespace QuantConnect.DataSource
 {
@@ -15,8 +17,44 @@ namespace QuantConnect.DataSource
     public abstract class BrainLanguageMetricsEarningsCallsBase<T> : BaseData
         where T : BrainLanguageMetricsEarningsCallsBase<T>, new()
     {
+        private static DateTime? ParseNullableDate(string v)
+        {
+            if (string.IsNullOrWhiteSpace(v))
+                return null;
+            v = v.Trim();
+            if (DateTime.TryParseExact(v, "yyyyMMdd", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var d1))
+                return d1;
+            if (DateTime.TryParseExact(v, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var d2))
+                return d2;
+            if (DateTime.TryParse(v, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d3))
+                return d3;
+            return null;
+        }
+        
+        private static int? ParseNullableIntSafe(string v)
+        {
+            if (string.IsNullOrWhiteSpace(v))
+                return null;
+
+            return int.TryParse(v, NumberStyles.Any, CultureInfo.InvariantCulture, out var x)
+                ? x
+                : null;
+        }
+
+        private static decimal? ParseNullableDecimalSafe(string v)
+        {
+            if (string.IsNullOrWhiteSpace(v))
+                return null;
+
+            return decimal.TryParse(v, NumberStyles.Any, CultureInfo.InvariantCulture, out var x)
+                ? x
+                : null;
+        }
+        
         // === Transcript metadata ===
-        public DateTime LastTranscriptDate { get; set; }
+        public DateTime? LastTranscriptDate { get; set; }
         public int? LastTranscriptQuarter { get; set; }
         public int? LastTranscriptYear { get; set; }
 
@@ -149,7 +187,10 @@ namespace QuantConnect.DataSource
             if (csv.Length < 4)
                 return null;
 
-            var dataDate = Parse.DateTimeExact(csv[0], "yyyyMMdd");
+            //var dataDate = Parse.DateTimeExact(csv[0], "yyyyMMdd");
+            if (!DateTime.TryParseExact(csv[0], "yyyyMMdd", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var dataDate))
+                return null;
 
             var data = new T
             {
@@ -158,93 +199,95 @@ namespace QuantConnect.DataSource
                 EndTime = dataDate.AddHours(12)
             };
 
-            data.LastTranscriptDate = Parse.DateTimeExact(csv[1], "yyyyMMdd");
-            data.LastTranscriptQuarter = ParseNullableInt(csv[2]);
-            data.LastTranscriptYear = ParseNullableInt(csv[3]);
+            int i = 1;
 
-            int i = 4;
+            // === Transcript metadata ===
+            data.LastTranscriptDate    = ParseNullableDate(csv.ElementAtOrDefault(i++));
+            data.LastTranscriptQuarter = ParseNullableIntSafe(csv.ElementAtOrDefault(i++));
+            data.LastTranscriptYear    = ParseNullableIntSafe(csv.ElementAtOrDefault(i++));
 
             // === MD ===
-            data.MdNCharacters = ParseNullableDecimal(csv[i++]);
-            data.MdSentiment = ParseNullableDecimal(csv[i++]);
-            data.MdScoreUncertainty = ParseNullableDecimal(csv[i++]);
-            data.MdScoreLitigious = ParseNullableDecimal(csv[i++]);
-            data.MdScoreConstraining = ParseNullableDecimal(csv[i++]);
-            data.MdReadability = ParseNullableDecimal(csv[i++]);
-            data.MdLexicalRichness = ParseNullableDecimal(csv[i++]);
-            data.MdLexicalDensity = ParseNullableDecimal(csv[i++]);
-            data.MdSpecificDensity = ParseNullableDecimal(csv[i++]);
+            data.MdNCharacters       = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdSentiment         = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdScoreUncertainty  = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdScoreLitigious    = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdScoreConstraining = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdReadability       = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdLexicalRichness   = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdLexicalDensity    = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdSpecificDensity   = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
 
             // === AQ ===
-            data.AqNCharacters = ParseNullableDecimal(csv[i++]);
-            data.AqSentiment = ParseNullableDecimal(csv[i++]);
-            data.AqScoreUncertainty = ParseNullableDecimal(csv[i++]);
-            data.AqScoreLitigious = ParseNullableDecimal(csv[i++]);
-            data.AqScoreConstraining = ParseNullableDecimal(csv[i++]);
+            data.AqNCharacters       = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.AqSentiment         = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.AqScoreUncertainty  = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.AqScoreLitigious    = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.AqScoreConstraining = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
 
             // === MA ===
-            data.MaNCharacters = ParseNullableDecimal(csv[i++]);
-            data.MaSentiment = ParseNullableDecimal(csv[i++]);  
-            data.MaScoreUncertainty = ParseNullableDecimal(csv[i++]);
-            data.MaScoreLitigious = ParseNullableDecimal(csv[i++]);
-            data.MaScoreConstraining = ParseNullableDecimal(csv[i++]);
-            data.MaReadability = ParseNullableDecimal(csv[i++]);
-            data.MaLexicalRichness = ParseNullableDecimal(csv[i++]);
-            data.MaLexicalDensity = ParseNullableDecimal(csv[i++]);
-            data.MaSpecificDensity = ParseNullableDecimal(csv[i++]);
+            data.MaNCharacters       = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaSentiment         = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaScoreUncertainty  = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaScoreLitigious    = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaScoreConstraining = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaReadability       = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaLexicalRichness   = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaLexicalDensity    = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaSpecificDensity   = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
 
             if (csv.Length <= i)
                 return data;
 
             // === Prev transcript ===
-            data.PrevTranscriptDate    = Parse.DateTimeExact(csv[i++], "yyyyMMdd");
-            data.PrevTranscriptQuarter = ParseNullableInt(csv[i++]);
-            data.PrevTranscriptYear    = ParseNullableInt(csv[i++]);
+            data.PrevTranscriptDate    = ParseNullableDate(csv.ElementAtOrDefault(i++));
+            data.PrevTranscriptQuarter = ParseNullableIntSafe(csv.ElementAtOrDefault(i++));
+            data.PrevTranscriptYear    = ParseNullableIntSafe(csv.ElementAtOrDefault(i++));
 
             // === MD deltas & similarities ===
-            data.MdDeltaPercNCharacters   = ParseNullableDecimal(csv[i++]);
-            data.MdDeltaSentiment         = ParseNullableDecimal(csv[i++]);
-            data.MdDeltaScoreUncertainty  = ParseNullableDecimal(csv[i++]);
-            data.MdDeltaScoreLitigious    = ParseNullableDecimal(csv[i++]);
-            data.MdDeltaScoreConstraining = ParseNullableDecimal(csv[i++]);
-            data.MdDeltaReadability       = ParseNullableDecimal(csv[i++]);
-            data.MdDeltaLexicalRichness   = ParseNullableDecimal(csv[i++]);
-            data.MdDeltaLexicalDensity    = ParseNullableDecimal(csv[i++]);
-            data.MdDeltaSpecificDensity   = ParseNullableDecimal(csv[i++]);
+            data.MdDeltaPercNCharacters   = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdDeltaSentiment         = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdDeltaScoreUncertainty  = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdDeltaScoreLitigious    = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdDeltaScoreConstraining = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdDeltaReadability       = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdDeltaLexicalRichness   = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdDeltaLexicalDensity    = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdDeltaSpecificDensity   = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
 
-            data.MdSimilarityAll          = ParseNullableDecimal(csv[i++]);
-            data.MdSimilarityPositive     = ParseNullableDecimal(csv[i++]);
-            data.MdSimilarityNegative     = ParseNullableDecimal(csv[i++]);
-            data.MdSimilarityUncertainty  = ParseNullableDecimal(csv[i++]);
-            data.MdSimilarityLitigious    = ParseNullableDecimal(csv[i++]);
-            data.MdSimilarityConstraining = ParseNullableDecimal(csv[i++]);
+            data.MdSimilarityAll          = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdSimilarityPositive     = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdSimilarityNegative     = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdSimilarityUncertainty  = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdSimilarityLitigious    = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MdSimilarityConstraining = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
 
             // === AQ deltas & similarities ===
-            data.AqDeltaPercNCharacters   = ParseNullableDecimal(csv[i++]);
-            data.AqDeltaSentimentDelta    = ParseNullableDecimal(csv[i++]);
-            data.AqDeltaScoreUncertainty  = ParseNullableDecimal(csv[i++]);
-            data.AqDeltaScoreLitigious    = ParseNullableDecimal(csv[i++]);
-            data.AqDeltaScoreConstraining = ParseNullableDecimal(csv[i++]);
-            data.AqSimilarityAll          = ParseNullableDecimal(csv[i++]);
-            data.AqSimilarityPositive     = ParseNullableDecimal(csv[i++]);
-            data.AqSimilarityNegative     = ParseNullableDecimal(csv[i++]);
+            data.AqDeltaPercNCharacters   = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.AqDeltaSentimentDelta    = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.AqDeltaScoreUncertainty  = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.AqDeltaScoreLitigious    = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.AqDeltaScoreConstraining = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.AqSimilarityAll          = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.AqSimilarityPositive     = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.AqSimilarityNegative     = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
 
             // === MA deltas & similarities ===
-            data.MaDeltaPercNCharacters   = ParseNullableDecimal(csv[i++]);
-            data.MaDeltaSentimentDelta    = ParseNullableDecimal(csv[i++]);
-            data.MaDeltaScoreUncertainty  = ParseNullableDecimal(csv[i++]);
-            data.MaDeltaScoreLitigious    = ParseNullableDecimal(csv[i++]);
-            data.MaDeltaScoreConstraining = ParseNullableDecimal(csv[i++]);
-            data.MaDeltaReadability       = ParseNullableDecimal(csv[i++]);
-            data.MaDeltaLexicalRichness   = ParseNullableDecimal(csv[i++]);
-            data.MaDeltaLexicalDensity    = ParseNullableDecimal(csv[i++]);
-            data.MaDeltaSpecificDensity   = ParseNullableDecimal(csv[i++]);
-            data.MaSimilarityAll          = ParseNullableDecimal(csv[i++]);
-            data.MaSimilarityPositive     = ParseNullableDecimal(csv[i++]);
-            data.MaSimilarityNegative     = ParseNullableDecimal(csv[i++]);
-            data.MaSimilarityUncertainty  = ParseNullableDecimal(csv[i++]);
-            data.MaSimilarityLitigious    = ParseNullableDecimal(csv[i++]);
-            data.MaSimilarityConstraining = ParseNullableDecimal(csv[i++]);
+            data.MaDeltaPercNCharacters   = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaDeltaSentimentDelta    = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaDeltaScoreUncertainty  = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaDeltaScoreLitigious    = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaDeltaScoreConstraining = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaDeltaReadability       = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaDeltaLexicalRichness   = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaDeltaLexicalDensity    = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaDeltaSpecificDensity   = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            
+            data.MaSimilarityAll          = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaSimilarityPositive     = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaSimilarityNegative     = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaSimilarityUncertainty  = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaSimilarityLitigious    = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
+            data.MaSimilarityConstraining = ParseNullableDecimalSafe(csv.ElementAtOrDefault(i++));
 
             return data;
         }
