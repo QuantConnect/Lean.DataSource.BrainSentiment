@@ -6,7 +6,7 @@ from pythonnet import set_runtime
 
 # process.runtimeconfig.json is created when we build the DataProcessing Project:
 # dotnet build .\DataProcessing\DataProcessing.csproj
-set_runtime(get_coreclr(join(dirname(realpath(__file__)), "process.runtimeconfig.json")))
+set_runtime(get_coreclr(runtime_config=join(dirname(realpath(__file__)), "process.runtimeconfig.json")))
 
 from AlgorithmImports import *
 from QuantConnect.Lean.Engine.DataFeeds import *
