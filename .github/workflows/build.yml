@@ -36,4 +36,4 @@ jobs:
             # BuildDataProcessing
             dotnet build ./DataProcessing/DataProcessing.csproj /p:Configuration=Release /v:quiet /p:WarningLevel=1 && \
             # Test CLRImports Script
-            pip install --no-cache-dir clr-loader==0.1.6 && python ./DataProcessing/bin/Release/net10.0/CLRImports.py
+            pip install --no-cache-dir clr-loader==0.2.9 && python ./DataProcessing/bin/Release/net10.0/CLRImports.py
