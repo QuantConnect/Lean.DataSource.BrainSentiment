@@ -31,5 +31,5 @@ Once ready, please contact support@quantconnect.com and we will create a listing
 
 ### Tutorials
 
- - See [Tutorials](https://github.com/QuantConnect/Lean/blob/master/tutorials.md) for a step by step guide for creating a new LEAN Data Source.
+ - See [Tutorials](https://www.quantconnect.com/docs/v2/lean-engine/contributions/datasets/) for a step by step guide for creating a new LEAN Data Source.
  
