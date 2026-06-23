@@ -89,6 +89,6 @@ class UniverseDataProcessing:
                         days = file.split(os.sep)[-3]
                         data[date][ticker][days] = ",".join(datum[1:]).replace("\n", "")
                     else:
-                        data[date][ticker] = ",".join(datum[3:36]).replace("\n", "")
+                        data[date][ticker] = ",".join(datum[3:53]).replace("\n", "")
 
         return data, universe_path
