@@ -100,9 +100,9 @@ namespace QuantConnect.DataSource
 
             var data = (BrainCompanyFilingLanguageMetricsUniverse<T>)((object)new T());
 
-            data.ReportSentiment = BrainCompanyFilingLanguageMetrics.Parse(csv.Skip(2).Take(11).ToList());
-            data.RiskFactorsStatementSentiment = BrainCompanyFilingLanguageMetrics.Parse(csv.Skip(13).Take(11).ToList());
-            data.ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations = BrainCompanyFilingLanguageMetrics.Parse(csv.Skip(24).Take(11).ToList());
+            data.ReportSentiment = BrainCompanyFilingLanguageMetrics.Parse(csv.Skip(2).Take(11).ToList(), csv.Skip(39).Take(7).ToList());
+            data.RiskFactorsStatementSentiment = BrainCompanyFilingLanguageMetrics.Parse(csv.Skip(13).Take(11).ToList(), csv.Skip(46).Take(3).ToList());
+            data.ManagementDiscussionAnalyasisOfFinancialConditionAndResultsOfOperations = BrainCompanyFilingLanguageMetrics.Parse(csv.Skip(24).Take(11).ToList(), csv.Skip(49).ToList());
 
             data.Symbol = new Symbol(SecurityIdentifier.Parse(csv[0]), csv[1]);
             // We need to convert the time since the date is in UTC, and AddUniverse sets the ExchangeTimeZone to TimeZones.NewYork
